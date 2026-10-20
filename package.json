@@ -1,6 +1,6 @@
 {
   "name": "jenkins-to-actions",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Jenkinsfile and Jenkins job config to GitHub Actions converter, with a whole-estate audit",
   "main": "index.js",
   "directories": {

@@ -144,14 +144,6 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
       </tbody>
     </table>
 
-    <h2>Auditing a whole Jenkins server?</h2>
-    <p>The same converter ships as a command-line audit. Point it at a Jenkins server with a read-only API token and it inventories every job (pipelines, freestyle, Maven, matrix, multibranch), writes converted workflows for everything it can convert, estimates the effort per job and lists the secrets to create. Nothing leaves your machine.</p>
-    <pre class="out" style="min-height:0;white-space:pre-wrap">npx jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN
-
-# or from exported job configs, with no network access to Jenkins
-npx jenkins-to-actions audit --dir ./jenkins_home/jobs</pre>
-    <p>Output: <code>report.md</code> with a suggested migration order, <code>inventory.json</code>, and <code>workflows/*.yml</code>. See the <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a>.</p>
-
     <h2>Why one job per stage is the default</h2>
     <p>It keeps the shape of your pipeline visible in the Actions graph and lets parallel stages and per-stage agents map directly. The cost is that each job starts from a clean runner, so a <code>Build</code> job cannot see what <code>Checkout</code> produced. If your stages pass files to each other, either switch to the single-job layout (stages become named steps in one job) or add <code>upload-artifact</code>/<code>download-artifact</code> between the jobs. Both layouts are offered above; pick the one that needs fewer edits.</p>
 
@@ -171,6 +163,15 @@ npx jenkins-to-actions audit --dir ./jenkins_home/jobs</pre>
     <h3>The output has errors in it.</h3>
     <p>Every generated workflow is checked against <a href="https://github.com/rhysd/actionlint" rel="noopener">actionlint</a> in this tool's test suite, but your Jenkinsfile may hit a shape the parser does not understand. <a href="mailto:adam.p.gibbons@gmail.com?subject=Jenkinsfile%20converter%20bug">Email the Jenkinsfile</a> (redact what you need to) and it will become a test case.</p>
   
+    <h2>Migrating a whole organisation?</h2>
+    <p>The same converters ship as a command-line audit. Point it at a GitHub organisation, a GitLab group, an Azure DevOps organisation, a Bitbucket workspace or a Jenkins server and it inventories every CI configuration it finds, converts what it can, estimates the effort per repository and lists the secrets to create. With <code>--open-prs</code> it opens a pull request in each GitHub repository with the workflow and the notes. Nothing is sent anywhere except the platform you point it at.</p>
+    <pre class="out" style="min-height:0;white-space:pre-wrap">GITHUB_TOKEN=… npx jenkins-to-actions audit --github-org acme          # report + workflows
+GITHUB_TOKEN=… npx jenkins-to-actions audit --github-org acme --open-prs   # one PR per repository
+GITLAB_TOKEN=… npx jenkins-to-actions audit --gitlab-group acme/platform
+AZURE_DEVOPS_TOKEN=… npx jenkins-to-actions audit --azure-org acme
+npx jenkins-to-actions audit --bitbucket-workspace acme --user me --token APP_PASSWORD
+npx jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN</pre>
+    <p>See a real result: <a href="https://github.com/Huckcity/ci-migration-demo/pull/1" rel="noopener">this pull request</a> was opened by one command on a repository holding one config per system. The <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a> has the details.</p>
   </article>
 </main>
 <footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>

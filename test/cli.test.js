@@ -50,7 +50,7 @@ test('matrix job becomes strategy.matrix with os conditions', () => {
 test('audit over a directory writes report, inventory and workflows', () => {
   const dir = mkdtempSync(join(tmpdir(), 'j2a-audit-'));
   const out = execFileSync('node', [new URL('../cli/index.js', import.meta.url).pathname, 'audit', '--dir', new URL('./fixtures/', import.meta.url).pathname, '--out', dir], { encoding: 'utf8' });
-  assert.match(out, /jobs analysed/);
+  assert.match(out, /(jobs|CI configurations) analysed/);
   assert.ok(existsSync(join(dir, 'report.md')) && existsSync(join(dir, 'inventory.json')));
   const inv = JSON.parse(readFileSync(join(dir, 'inventory.json'), 'utf8'));
   const types = Object.fromEntries(inv.jobs.map((j) => [j.name, j.type]));

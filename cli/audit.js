@@ -6,25 +6,39 @@ import { join, basename, dirname, resolve } from 'node:path';
 import { convert } from '../public/convert.js';
 import { convertFreestyle, classifyConfig } from './freestyle.js';
 import { child, text, findAll } from './xml.js';
+import { SOURCES, detect } from '../public/converters/index.js';
+import { fromGithub } from './sources/github.js';
+import { fromGitlab } from './sources/gitlab.js';
+import { fromAzure } from './sources/azure.js';
+import { fromBitbucket } from './sources/bitbucket.js';
+import { openPullRequests } from './migrate.js';
 
 const args = parseArgs(process.argv.slice(2));
-if (args.help || (!args.url && !args.dir && !process.env.JENKINS_URL)) {
-  console.log(`jenkins-to-actions audit — inventory a Jenkins server and convert its jobs to GitHub Actions
+const hasSource = args.url || args.dir || process.env.JENKINS_URL || args['github-org'] || args['gitlab-group'] || args['azure-org'] || args['bitbucket-workspace'] || args.repos;
+if (args.help || !hasSource) {
+  console.log(`jenkins-to-actions audit — inventory a CI estate and convert it to GitHub Actions
 
-Usage:
-  npx jenkins-to-actions audit --url https://jenkins.example.com [--user NAME --token APITOKEN] [--out DIR]
-  npx jenkins-to-actions audit --dir ./exported-configs [--out DIR]
-  npx jenkins-to-actions convert Jenkinsfile [--mode jobs|single] > ci.yml
+Sources (pick one):
+  --url https://jenkins.example.com [--user U --token T]   Jenkins server (read-only API). Also JENKINS_URL/JENKINS_USER/JENKINS_TOKEN.
+  --dir ./exported-configs                                  Jenkins config.xml files and/or any CI config files on disk.
+  --github-org ORG [--token T]                              Every repo in a GitHub org or user: Jenkinsfile, .gitlab-ci.yml, azure-pipelines.yml,
+                                                            .circleci/config.yml, bitbucket-pipelines.yml, .travis.yml. GITHUB_TOKEN works too.
+  --repos owner/a,owner/b                                   Specific GitHub repositories instead of a whole org.
+  --gitlab-group GROUP [--token T] [--api URL]              Every project in a GitLab group and its subgroups (GITLAB_TOKEN).
+  --azure-org ORG [--token PAT]                             Every YAML pipeline in an Azure DevOps organisation (AZURE_DEVOPS_TOKEN).
+  --bitbucket-workspace WS --user U --token APP_PASSWORD    Every repository in a Bitbucket Cloud workspace (BITBUCKET_USER/BITBUCKET_TOKEN).
 
-Options:
-  --url, --user, --token   Jenkins base URL and API credentials (or JENKINS_URL / JENKINS_USER / JENKINS_TOKEN). Read-only access is enough.
-  --dir                    Directory containing config.xml files (any depth; the parent folder name becomes the job name).
-  --out                    Output directory (default ./jenkins-migration). Contains report.md, inventory.json and workflows/.
-  --include, --exclude     Glob-ish filters on job full names (comma separated; * matches anything).
-  --insecure               Skip TLS verification.
-  --json                   Print the inventory JSON to stdout instead of writing files.
+Output:
+  --out DIR               Default ./ci-migration: report.md, inventory.json, workflows/<repo>/<file>.yml
+  --json                  Print the inventory JSON to stdout instead of writing files.
+  --include, --exclude    Glob-ish filters on names (comma separated; * matches anything).
 
-Nothing leaves your machine. The tool only reads job configuration; it never changes anything on Jenkins.`);
+Opening pull requests (GitHub repositories only):
+  --open-prs              Push each converted workflow to a branch in its repository and open a pull request with the notes as the body.
+  --branch NAME           Branch name for the PRs (default ci/github-actions).
+  --dry-run               With --open-prs: show what would be opened without pushing anything.
+
+Nothing leaves your machine except the API calls to the platform you point it at; without --open-prs the tool only reads.`);
   process.exit(args.help ? 0 : 1);
 }
 
@@ -74,12 +88,12 @@ async function fromJenkins(base, user, token) {
     process.stderr.write(`\r[${n}/${jobs.length}] ${j.name.slice(0, 60).padEnd(60)}`);
     try {
       const xml = await get(`${j.url}config.xml`, true);
-      const item = { name: j.name, url: j.url, xml };
+      const item = { name: j.name, url: j.url, xml, system: 'jenkins-config', platform: 'jenkins' };
       if (/MultiBranch/.test(j._class)) {
         item.branches = (j.children || []).map((b) => b.name);
       }
       out.push(item);
-    } catch (e) { out.push({ name: j.name, url: j.url, error: e.message }); }
+    } catch (e) { out.push({ name: j.name, url: j.url, error: e.message, system: 'jenkins-config', platform: 'jenkins' }); }
   }
   process.stderr.write('\n');
   // Server-level facts
@@ -89,7 +103,7 @@ async function fromJenkins(base, user, token) {
   try { plugins = (await get(`${base}/pluginManager/api/json?depth=1&tree=plugins[shortName,version,active]`)).plugins.filter((p) => p.active).map((p) => `${p.shortName}@${p.version}`); } catch {}
   let nodes = [];
   try { nodes = (await get(`${base}/computer/api/json?tree=computer[displayName,offline,assignedLabels[name],numExecutors]`)).computer.map((c) => ({ name: c.displayName, offline: c.offline, labels: (c.assignedLabels || []).map((l) => l.name), executors: c.numExecutors })); } catch {}
-  return { source: base, version, plugins, nodes, items: out };
+  return { source: base, platform: 'jenkins', version, plugins, nodes, items: out };
 }
 
 function fromDir(dir) {
@@ -104,29 +118,52 @@ function fromDir(dir) {
         if (!name || name === '.') continue;
         items.push({ name, url: p, xml: readFileSync(p, 'utf8') });
       } else if (/^Jenkinsfile(\..*)?$/.test(f) || f.endsWith('.Jenkinsfile') || f.endsWith('.jenkinsfile')) {
-        items.push({ name: relName(dir, p), url: p, jenkinsfile: readFileSync(p, 'utf8') });
+        items.push({ name: relName(dir, p), url: p, system: 'jenkins', content: readFileSync(p, 'utf8'), path: f, platform: 'dir' });
+      } else if (/^(\.gitlab-ci\.ya?ml|azure-pipelines.*\.ya?ml|bitbucket-pipelines\.ya?ml|\.travis\.ya?ml)$/.test(f) || (f === 'config.yml' && basename(d) === '.circleci')) {
+        const content = readFileSync(p, 'utf8');
+        items.push({ name: relName(dir, p), url: p, system: detect(f === 'config.yml' ? '.circleci/config.yml' : f, content), content, path: f, platform: 'dir' });
       }
     }
   };
   walk(dir);
-  return { source: resolve(dir), version: '', plugins: [], nodes: [], items: items.filter((i) => wanted(i.name)) };
+  return { source: resolve(dir), platform: 'dir', version: '', plugins: [], nodes: [], items: items.filter((i) => wanted(i.name)) };
 }
 const relName = (root, p) => resolve(p).slice(resolve(root).length + 1).replace(/\\/g, '/').replace(/\/jobs\//g, '/');
 
 // ---------------------------------------------------------------- analysis
 
+import * as gitlabConv from '../public/converters/gitlab.js';
+import * as azureConv from '../public/converters/azure.js';
+import * as circleConv from '../public/converters/circleci.js';
+import * as bitbucketConv from '../public/converters/bitbucket.js';
+import * as travisConv from '../public/converters/travis.js';
+const CONVERTERS = { gitlab: gitlabConv, azure: azureConv, circleci: circleConv, bitbucket: bitbucketConv, travis: travisConv };
+
 const EFFORT = { trivial: 0.25, small: 1, medium: 3, large: 6, xlarge: 12 }; // hours, rough
 function score(hours) { return hours <= 0.5 ? 'trivial' : hours <= 1.5 ? 'small' : hours <= 4 ? 'medium' : hours <= 8 ? 'large' : 'xlarge'; }
 
 function analyse(item) {
-  const rec = { name: item.name, url: item.url, type: 'unknown', disabled: false, description: '', notes: [], secrets: [], plugins: [], todos: 0, hours: 0, yaml: '', repo: null, scriptPath: null, branches: item.branches || null };
-  if (item.error) { rec.type = 'error'; rec.notes.push(`Could not read config: ${item.error}`); rec.hours = 1; return rec; }
-  if (item.jenkinsfile) {
-    const r = convert(item.jenkinsfile, { mode: 'jobs', workflowName: basename(item.name) });
+  const rec = { name: item.name, url: item.url, type: 'unknown', system: item.system || 'jenkins-config', platform: item.platform || 'jenkins', repo: item.repo || null, path: item.path || null, defaultBranch: item.defaultBranch || null, disabled: false, description: '', notes: [], secrets: [], plugins: [], todos: 0, hours: 0, yaml: '', scriptPath: null, branches: item.branches || null };
+  if (item.error && !item.content) { rec.type = item.system === 'azure-classic' ? 'azure-classic' : 'error'; rec.notes.push(item.error); rec.hours = item.system === 'azure-classic' ? 4 : 1; return rec; }
+  if (item.system === 'jenkins' && item.content !== undefined) {
+    const r = convert(item.content, { mode: 'jobs', workflowName: basename(item.name) });
     Object.assign(rec, { type: r.scripted ? 'pipeline-scripted' : 'pipeline-declarative', notes: r.notes, secrets: r.secrets, yaml: r.yaml, todos: countTodos(r.yaml) });
-    rec.hours = pipelineHours(rec, item.jenkinsfile);
+    rec.hours = pipelineHours(rec, item.content);
     return rec;
   }
+  if (item.system && item.system !== 'jenkins-config' && item.content !== undefined && item.content !== null) {
+    const conv = CONVERTERS[item.system];
+    if (!conv) { rec.type = item.system; rec.notes.push(`No converter for ${item.system}.`); rec.hours = 4; return rec; }
+    let r;
+    try { r = conv.convert(item.content, { workflowName: basename(item.repo || item.name) }); } catch (e) { r = { yaml: '', notes: [`Converter crashed: ${e.message}`], secrets: [] }; }
+    rec.type = item.system;
+    rec.notes = r.notes; rec.secrets = r.secrets || []; rec.yaml = r.yaml; rec.todos = countTodos(r.yaml);
+    const manual = r.notes.filter((n) => /by hand|manual|rewrite|not resolved|no mapping|not translated|TODO/i.test(n)).length;
+    rec.hours = Math.min(16, (r.yaml ? 0.5 : 3) + rec.todos * 1.5 + manual * 0.5 + (String(item.content).split('\n').length > 200 ? 1.5 : 0));
+    if (/include:|template:|orbs:|@Library/.test(String(item.content))) rec.hours += 1;
+    return rec;
+  }
+  if (!item.xml) { rec.type = 'error'; rec.notes.push('Nothing to analyse.'); rec.hours = 1; return rec; }
   const { type, root } = classifyConfig(item.xml);
   rec.type = type;
   if (!root) { rec.notes.push('Unreadable config.xml'); rec.hours = 1; return rec; }
@@ -198,14 +235,16 @@ function buildReport(estate, recs) {
   for (const r of active) for (const p of r.plugins) pluginUse[p] = (pluginUse[p] || 0) + 1;
   const secretsAll = new Set(active.flatMap((r) => r.secrets));
   const L = [];
-  L.push(`# Jenkins → GitHub Actions migration audit`, '');
-  L.push(`Source: \`${estate.source}\`${estate.version ? ` (Jenkins ${estate.version})` : ''} · generated ${new Date().toISOString().slice(0, 10)} by [jenkins-to-actions](https://github.com/Huckcity/jenkins-to-actions)`, '');
+  const systems = [...new Set(active.map((r) => TYPE_LABEL[r.type] || r.type))];
+  L.push(`# ${estate.platform === 'jenkins' ? 'Jenkins' : 'CI'} → GitHub Actions migration audit`, '');
+  L.push(`Source: \`${estate.source}\`${estate.version ? ` (Jenkins ${estate.version})` : ''}${estate.repoCount ? ` · ${estate.repoCount} repositories scanned` : ''} · generated ${new Date().toISOString().slice(0, 10)} by [jenkins-to-actions](https://github.com/Huckcity/jenkins-to-actions)`, '');
   L.push('## Summary', '');
   L.push(`| | |`, `|---|---|`);
-  L.push(`| Jobs | **${active.length}** (${active.filter((r) => r.disabled).length} disabled) |`);
+  L.push(`| ${estate.platform === 'jenkins' ? 'Jobs' : 'CI configurations'} | **${active.length}** (${active.filter((r) => r.disabled).length} disabled) |`);
   for (const [t, n] of Object.entries(byType).sort((a, b) => b[1] - a[1])) L.push(`| ${TYPE_LABEL[t] || t} | ${n} |`);
   L.push(`| Converted automatically | ${active.filter((r) => r.yaml && r.todos === 0).length} clean, ${active.filter((r) => r.yaml && r.todos > 0).length} with TODOs |`);
-  L.push(`| Jenkinsfiles to fetch from repos | ${active.filter((r) => r.type === 'pipeline-scm' || r.type === 'multibranch').length} |`);
+  if (estate.platform === 'jenkins') L.push(`| Jenkinsfiles to fetch from repos | ${active.filter((r) => r.type === 'pipeline-scm' || r.type === 'multibranch').length} |`);
+  if (estate.platform !== 'jenkins' && estate.repoCount) L.push(`| Repositories without any CI config | ${Math.max(0, estate.repoCount - new Set(active.map((r) => r.repo)).size)} |`);
   L.push(`| Secrets to create | ${secretsAll.size} |`);
   L.push(`| Estimated hands-on effort | **${fmtHours(totalHours)}** (${fmtHours(totalHours * 0.6)}–${fmtHours(totalHours * 1.8)}) for enabled jobs, excluding testing and cut-over |`);
   if (estate.nodes.length) L.push(`| Agents | ${estate.nodes.length} (${estate.nodes.filter((n) => n.offline).length} offline); labels: ${[...new Set(estate.nodes.flatMap((n) => n.labels))].slice(0, 12).join(', ')} |`);
@@ -242,33 +281,44 @@ function buildReport(estate, recs) {
   L.push('## Per-job detail', '');
   for (const r of active) {
     L.push(`### ${r.name}${r.disabled ? ' (disabled)' : ''}`, '');
-    L.push(`Type: ${TYPE_LABEL[r.type] || r.type} · effort ${score(r.hours)} (~${fmtHours(r.hours)})${r.yaml ? ` · workflow: \`workflows/${slug(r.name)}.yml\`` : ''}${r.repo ? ` · repo: ${r.repo}` : ''}${r.scriptPath ? ` · script: ${r.scriptPath}` : ''}`, '');
+    L.push(`Type: ${TYPE_LABEL[r.type] || r.type} · effort ${score(r.hours)} (~${fmtHours(r.hours)})${r.yaml ? ` · workflow: \`workflows/${workflowFile(r)}\`` : ''}${r.repo ? ` · repo: ${r.repo}` : ''}${r.scriptPath ? ` · script: ${r.scriptPath}` : ''}${r.pr ? ` · PR: ${r.pr}` : ''}`, '');
     if (r.description) L.push(`> ${r.description.split('\n')[0]}`, '');
     if (r.notes.length) L.push(r.notes.map((n) => `- ${n}`).join('\n'), '');
   }
   L.push('---', '', 'Need this done for the whole estate, including the shared libraries and the cut-over plan? The author does Jenkins → GitHub Actions migrations as contract work: adam.p.gibbons@gmail.com. If the tool alone saved you time, [sponsorship](https://github.com/sponsors/Huckcity) keeps it maintained.', '');
   return L.join('\n');
 }
-const TYPE_LABEL = { freestyle: 'Freestyle', maven: 'Maven project', matrix: 'Matrix (multi-configuration)', 'pipeline-declarative': 'Pipeline (declarative, inline)', 'pipeline-scripted': 'Pipeline (scripted, inline)', 'pipeline-scm': 'Pipeline (Jenkinsfile from SCM)', multibranch: 'Multibranch pipeline', folder: 'Folder', unknown: 'Unknown', error: 'Unreadable', multijob: 'MultiJob', external: 'External job' };
+const TYPE_LABEL = { gitlab: 'GitLab CI', azure: 'Azure Pipelines (YAML)', 'azure-classic': 'Azure Pipelines (classic)', circleci: 'CircleCI', bitbucket: 'Bitbucket Pipelines', travis: 'Travis CI', freestyle: 'Freestyle', maven: 'Maven project', matrix: 'Matrix (multi-configuration)', 'pipeline-declarative': 'Pipeline (declarative, inline)', 'pipeline-scripted': 'Pipeline (scripted, inline)', 'pipeline-scm': 'Pipeline (Jenkinsfile from SCM)', multibranch: 'Multibranch pipeline', folder: 'Folder', unknown: 'Unknown', error: 'Unreadable', multijob: 'MultiJob', external: 'External job' };
 const REPLACEMENT = { Shell: '`run:`', BatchFile: '`run:` with `shell: cmd`', PowerShell: '`run:` with `shell: pwsh`', Maven: '`run: mvn` + actions/setup-java', Gradle: '`run: ./gradlew` + gradle/actions/setup-gradle', Ant: '`run: ant`', git: 'actions/checkout', TimerTrigger: '`on.schedule`', SCMTrigger: '`on.push`', ArtifactArchiver: 'actions/upload-artifact', JUnitResultArchiver: 'mikepenz/action-junit-report', Mailer: 'built-in failure notifications', ExtendedEmailPublisher: 'dawidd6/action-send-mail', BuildTrigger: '`workflow_run` / `gh workflow run`', SecretBuildWrapper: '`${{ secrets.* }}` in `env:`', BuildTimeoutWrapper: '`timeout-minutes`', PreBuildCleanup: 'not needed (fresh runner)', TimestamperBuildWrapper: 'built in', AnsiColorBuildWrapper: 'built in', ParametersDefinitionProperty: '`workflow_dispatch.inputs`', EnvInjectBuildWrapper: '`env:`', EnvInjectJobProperty: '`env:`', CopyArtifact: 'actions/download-artifact', HtmlPublisher: 'actions/upload-artifact', SlackNotifier: 'slackapi/slack-github-action', SonarRunnerBuilder: 'SonarSource/sonarqube-scan-action', NodeJSBuildWrapper: 'actions/setup-node', SSHAgentBuildWrapper: 'webfactory/ssh-agent', GitHubPushTrigger: '`on.push`', ReverseBuildTrigger: '`workflow_run`', DockerBuildAndPublish: 'docker/build-push-action', MsBuildBuilder: 'microsoft/setup-msbuild', ConditionalBuilder: 'step `if:`', TriggerBuilder: '`gh workflow run`', GitPublisher: '`run: git push`', WsCleanup: 'not needed' };
 function fmtHours(h) { return h < 1 ? `${Math.round(h * 60)} min` : h < 8 ? `${Math.round(h * 2) / 2} h` : `${Math.round(h / 8 * 10) / 10} days`; }
 
 // ---------------------------------------------------------------- main
 
 async function main() {
-  const estate = args.dir ? fromDir(String(args.dir)) : await fromJenkins(String(args.url || process.env.JENKINS_URL), args.user || process.env.JENKINS_USER, args.token || process.env.JENKINS_TOKEN);
+  let estate;
+  const token = args.token;
+  if (args.dir) estate = fromDir(String(args.dir));
+  else if (args['github-org'] || args.repos) estate = await fromGithub({ org: String(args['github-org'] || String(args.repos).split('/')[0]), token: token || process.env.GITHUB_TOKEN || process.env.GH_TOKEN, api: args.api || process.env.GITHUB_API_URL || 'https://api.github.com', wanted, repos: args.repos ? String(args.repos).split(',').map((s) => s.trim()).filter(Boolean) : null });
+  else if (args['gitlab-group']) estate = await fromGitlab({ group: String(args['gitlab-group']), token: token || process.env.GITLAB_TOKEN, api: args.api || process.env.GITLAB_API_URL || 'https://gitlab.com/api/v4', wanted, insecure: !!args.insecure });
+  else if (args['azure-org']) estate = await fromAzure({ org: String(args['azure-org']), token: token || process.env.AZURE_DEVOPS_TOKEN || process.env.AZURE_DEVOPS_EXT_PAT, api: args.api || 'https://dev.azure.com', wanted });
+  else if (args['bitbucket-workspace']) estate = await fromBitbucket({ workspace: String(args['bitbucket-workspace']), user: args.user || process.env.BITBUCKET_USER, token: token || process.env.BITBUCKET_TOKEN, wanted });
+  else estate = await fromJenkins(String(args.url || process.env.JENKINS_URL), args.user || process.env.JENKINS_USER, token || process.env.JENKINS_TOKEN);
   const recs = estate.items.map(analyse);
+  if (args['open-prs']) {
+    if (estate.platform !== 'github') { console.error('--open-prs needs a GitHub source (--github-org or --repos).'); process.exit(1); }
+    await openPullRequests(recs, { token: token || process.env.GITHUB_TOKEN || process.env.GH_TOKEN, api: args.api || process.env.GITHUB_API_URL || 'https://api.github.com', branch: String(args.branch || 'ci/github-actions'), dryRun: !!args['dry-run'] });
+  }
   const inventory = { source: estate.source, version: estate.version, generated: new Date().toISOString(), plugins: estate.plugins, nodes: estate.nodes, jobs: recs.map(({ yaml, ...r }) => r) };
   if (args.json) { console.log(JSON.stringify(inventory, null, 2)); return; }
-  const out = String(args.out || './jenkins-migration');
+  const out = String(args.out || (estate.platform === 'jenkins' ? './jenkins-migration' : './ci-migration'));
   mkdirSync(join(out, 'workflows'), { recursive: true });
-  for (const r of recs) if (r.yaml) writeFileSync(join(out, 'workflows', `${slug(r.name)}.yml`), r.yaml);
+  for (const r of recs) if (r.yaml) { const f = join(out, 'workflows', workflowFile(r)); mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, r.yaml); }
   writeFileSync(join(out, 'inventory.json'), JSON.stringify(inventory, null, 2));
   const report = buildReport(estate, recs);
   writeFileSync(join(out, 'report.md'), report);
   const active = recs.filter((r) => !['folder', 'organization-folder'].includes(r.type));
   const hours = active.reduce((a, r) => a + (r.disabled ? 0 : r.hours), 0);
-  console.log(`\n${active.length} jobs analysed · ${recs.filter((r) => r.yaml).length} workflows written to ${join(out, 'workflows')} · estimated effort ${fmtHours(hours)}`);
+  console.log(`\n${active.length} ${estate.platform === 'jenkins' ? 'jobs' : 'CI configurations'} analysed · ${recs.filter((r) => r.yaml).length} workflows written to ${join(out, 'workflows')} · estimated effort ${fmtHours(hours)}`);
   console.log(`Report: ${join(out, 'report.md')}`);
   const top = [...active].filter((r) => !r.disabled).sort((a, b) => b.hours - a.hours).slice(0, 5);
   if (top.length) { console.log('\nHardest jobs:'); for (const r of top) console.log(`  ${pad(score(r.hours), 8)} ${pad(fmtHours(r.hours), 8)} ${r.name}`); }
@@ -276,3 +326,9 @@ async function main() {
 main().catch((e) => { console.error(`error: ${e.message}`); process.exit(1); });
 
 function countTodos(yaml) { return (yaml.match(/^\s*- name: '?TODO/gm) || []).length; }
+
+// Where a converted workflow lands under <out>/workflows/. Repo-based sources get a folder per repository.
+function workflowFile(r) {
+  if (r.repo && r.platform !== 'jenkins') return `${r.repo.replace(/[^\w.-]+/g, '-')}/${(r.path || 'ci').replace(/^\./, '').replace(/[\/]/g, '-').replace(/\.ya?ml$/, '')}.yml`;
+  return `${slug(r.name)}.yml`;
+}

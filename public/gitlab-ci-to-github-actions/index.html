@@ -144,6 +144,15 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
     <h3>How does this compare with GitHub Actions Importer?</h3>
     <p>Actions Importer is a CLI that connects to your GitLab instance and converts in bulk. This page is for one file at a time with nothing to install. The same converter is available as <code>npx jenkins-to-actions convert .gitlab-ci.yml</code>.</p>
 
+    <h2>Migrating a whole organisation?</h2>
+    <p>The same converters ship as a command-line audit. Point it at a GitHub organisation, a GitLab group, an Azure DevOps organisation, a Bitbucket workspace or a Jenkins server and it inventories every CI configuration it finds, converts what it can, estimates the effort per repository and lists the secrets to create. With <code>--open-prs</code> it opens a pull request in each GitHub repository with the workflow and the notes. Nothing is sent anywhere except the platform you point it at.</p>
+    <pre class="out" style="min-height:0;white-space:pre-wrap">GITHUB_TOKEN=… npx jenkins-to-actions audit --github-org acme          # report + workflows
+GITHUB_TOKEN=… npx jenkins-to-actions audit --github-org acme --open-prs   # one PR per repository
+GITLAB_TOKEN=… npx jenkins-to-actions audit --gitlab-group acme/platform
+AZURE_DEVOPS_TOKEN=… npx jenkins-to-actions audit --azure-org acme
+npx jenkins-to-actions audit --bitbucket-workspace acme --user me --token APP_PASSWORD
+npx jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN</pre>
+    <p>See a real result: <a href="https://github.com/Huckcity/ci-migration-demo/pull/1" rel="noopener">this pull request</a> was opened by one command on a repository holding one config per system. The <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a> has the details.</p>
   </article>
 </main>
 <footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>
