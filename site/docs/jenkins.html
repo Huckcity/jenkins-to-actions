@@ -1,0 +1,60 @@
+    <h2>What this converter does</h2>
+    <p>Paste a <code>Jenkinsfile</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. It handles declarative pipelines (<code>pipeline { }</code>) and the common shape of scripted pipelines (<code>node { stage { } }</code>). Conversion runs entirely in your browser; your pipeline never leaves the page, which matters because Jenkinsfiles tend to contain internal hostnames and credential IDs.</p>
+    <p>The output is a starting point, not a finished migration. Every construct without a clean equivalent becomes a <code>TODO</code> step that fails loudly, so nothing silently disappears. The notes panel tells you which repository secrets to create.</p>
+
+    <h2>How Jenkins concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>Jenkins</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>agent any</code> / <code>agent { label }</code></td><td><code>runs-on</code></td><td>Labels mentioning linux, windows or mac map to hosted runners; anything else becomes <code>[self-hosted, label]</code>.</td></tr>
+        <tr><td><code>agent { docker { image } }</code></td><td><code>container:</code></td><td>Linux runners only. The image needs a shell.</td></tr>
+        <tr><td><code>stage</code></td><td><code>job</code> (or a group of steps)</td><td>Jenkins stages share one workspace; jobs do not. Use artifacts or the single-job layout.</td></tr>
+        <tr><td><code>parallel { }</code></td><td>Sibling jobs with the same <code>needs</code></td><td>Next stage fans in with <code>needs: [a, b, c]</code>.</td></tr>
+        <tr><td><code>matrix { axes }</code></td><td><code>strategy.matrix</code></td><td><code>excludes</code> become <code>matrix.exclude</code>.</td></tr>
+        <tr><td><code>when { branch 'main' }</code></td><td><code>if: github.ref == 'refs/heads/main'</code></td><td>Globs become <code>startsWith</code>/<code>contains</code>.</td></tr>
+        <tr><td><code>environment { }</code></td><td><code>env:</code></td><td><code>credentials('id')</code> becomes <code>${{ secrets.ID }}</code>.</td></tr>
+        <tr><td><code>parameters { }</code></td><td><code>workflow_dispatch.inputs</code></td><td><code>params.X</code> becomes <code>${{ inputs.X }}</code>.</td></tr>
+        <tr><td><code>triggers { cron }</code></td><td><code>on.schedule</code></td><td>Jenkins <code>H</code> has no equivalent; GitHub schedules run in UTC.</td></tr>
+        <tr><td><code>options { timeout }</code></td><td><code>timeout-minutes</code></td><td></td></tr>
+        <tr><td><code>disableConcurrentBuilds()</code></td><td><code>concurrency:</code></td><td><code>abortPrevious</code> becomes <code>cancel-in-progress</code>.</td></tr>
+        <tr><td><code>sh</code> / <code>bat</code> / <code>powershell</code></td><td><code>run:</code></td><td>With <code>shell: cmd</code> or <code>pwsh</code> where needed.</td></tr>
+        <tr><td><code>withCredentials</code></td><td><code>env:</code> from <code>secrets.*</code></td><td>Username/password pairs become two secrets.</td></tr>
+        <tr><td><code>archiveArtifacts</code>, <code>stash</code>/<code>unstash</code></td><td><code>actions/upload-artifact</code> / <code>download-artifact</code></td><td></td></tr>
+        <tr><td><code>junit</code></td><td><code>mikepenz/action-junit-report</code></td><td>Needs <code>permissions: checks: write</code>.</td></tr>
+        <tr><td><code>retry(n)</code></td><td><code>nick-fields/retry</code></td><td></td></tr>
+        <tr><td><code>timeout(...) { }</code></td><td>step <code>timeout-minutes</code></td><td></td></tr>
+        <tr><td><code>dir('x') { }</code></td><td><code>working-directory</code></td><td>Actions (<code>uses:</code>) ignore it; pass a path input instead.</td></tr>
+        <tr><td><code>post { always / success / failure }</code></td><td>steps with <code>if: always()</code> etc.</td><td>Pipeline-level <code>post</code> becomes a final job that <code>needs</code> everything.</td></tr>
+        <tr><td><code>input</code></td><td>Protected <code>environment:</code></td><td>Required reviewers replace manual approval steps.</td></tr>
+        <tr><td><code>${env.BUILD_NUMBER}</code>, <code>${BRANCH_NAME}</code> …</td><td><code>github.run_number</code>, <code>github.ref_name</code> …</td><td>Twenty-odd built-in variables are mapped.</td></tr>
+        <tr><td><code>script { }</code>, shared libraries, plugins</td><td><code>TODO</code> step</td><td>Simple <code>if</code>/<code>try</code>/<code>def x = sh(returnStdout)</code> are converted; the rest is left for you, verbatim, in a comment.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Auditing a whole Jenkins server?</h2>
+    <p>The same converter ships as a command-line audit. Point it at a Jenkins server with a read-only API token and it inventories every job (pipelines, freestyle, Maven, matrix, multibranch), writes converted workflows for everything it can convert, estimates the effort per job and lists the secrets to create. Nothing leaves your machine.</p>
+    <pre class="out" style="min-height:0;white-space:pre-wrap">npx jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN
+
+# or from exported job configs, with no network access to Jenkins
+npx jenkins-to-actions audit --dir ./jenkins_home/jobs</pre>
+    <p>Output: <code>report.md</code> with a suggested migration order, <code>inventory.json</code>, and <code>workflows/*.yml</code>. See the <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a>.</p>
+
+    <h2>Why one job per stage is the default</h2>
+    <p>It keeps the shape of your pipeline visible in the Actions graph and lets parallel stages and per-stage agents map directly. The cost is that each job starts from a clean runner, so a <code>Build</code> job cannot see what <code>Checkout</code> produced. If your stages pass files to each other, either switch to the single-job layout (stages become named steps in one job) or add <code>upload-artifact</code>/<code>download-artifact</code> between the jobs. Both layouts are offered above; pick the one that needs fewer edits.</p>
+
+    <h2>Things that never convert automatically</h2>
+    <ul>
+      <li><strong>Shared library calls</strong> (<code>@Library</code>, custom steps). You will see them as TODO steps with the original call quoted.</li>
+      <li><strong>Groovy logic</strong> beyond simple branches: loops, maps, string manipulation. Move it into a script in your repository and call that from a <code>run</code> step.</li>
+      <li><strong>Plugin steps</strong> such as <code>emailext</code>, <code>slackSend</code>, <code>withSonarQubeEnv</code>. The notes name the Marketplace action that usually replaces each one.</li>
+      <li><strong>UNSTABLE builds.</strong> Actions has success, failure, cancelled and skipped; there is no yellow.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my Jenkinsfile uploaded anywhere?</h3>
+    <p>No. The page is static and the converter is a single JavaScript file that runs in your tab. There is no backend to send anything to. You can check the network tab, or read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/convert.js" rel="noopener">convert.js on GitHub</a>.</p>
+    <h3>How does this compare with GitHub's Actions Importer?</h3>
+    <p>GitHub Actions Importer is a CLI that connects to your Jenkins server and converts pipelines in bulk, including plugin configuration it can read from the server. It is the right tool for a large estate. This page is for the moment you have one Jenkinsfile in front of you and want a workflow to start from without installing anything or connecting a server.</p>
+    <h3>The output has errors in it.</h3>
+    <p>Every generated workflow is checked against <a href="https://github.com/rhysd/actionlint" rel="noopener">actionlint</a> in this tool's test suite, but your Jenkinsfile may hit a shape the parser does not understand. <a href="mailto:adam.p.gibbons@gmail.com?subject=Jenkinsfile%20converter%20bug">Email the Jenkinsfile</a> (redact what you need to) and it will become a test case.</p>
+  

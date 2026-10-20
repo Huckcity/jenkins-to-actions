@@ -8,6 +8,10 @@ The bar for this project is "makes more than it costs to host", and hosting cost
 2. **Estate audit CLI** (live). Whole-server inventory + converted workflows + effort estimate. The `report.md` ends with the offer.
 3. **Migration engagement** (the revenue). Fixed-price per estate, scoped from the audit's effort estimate. The audit *is* the sales document.
 
+## 2026-10-20: wider market
+
+Added converters and search-targeted pages for GitLab CI, Azure Pipelines, CircleCI, Bitbucket Pipelines and Travis CI. Same emitter, same notes discipline, same actionlint-checked tests, same CLI (`convert` auto-detects the source). The audit funnel now has six doors. Next for this track: estate audits for GitLab (groups API) and Azure DevOps (projects API), and a `--open-prs` mode for all sources.
+
 ## Next steps, in order
 
 - [ ] `npm login` and publish `jenkins-to-actions` so the command is `npx jenkins-to-actions` (currently `npx jenkins-to-actions`).

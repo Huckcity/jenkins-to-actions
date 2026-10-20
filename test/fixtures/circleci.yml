@@ -1,0 +1,126 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5.2.0
+  slack: circleci/slack@4.12.5
+
+executors:
+  node-exec:
+    docker:
+      - image: cimg/node:20.11
+      - image: cimg/postgres:16.1
+        environment:
+          POSTGRES_USER: app
+    working_directory: ~/project
+    environment:
+      NODE_ENV: test
+
+commands:
+  install-deps:
+    description: Restore cache and install
+    parameters:
+      lockfile:
+        type: string
+        default: package-lock.json
+    steps:
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "<< parameters.lockfile >>" }}
+            - v1-deps-
+      - run: npm ci
+      - save_cache:
+          key: v1-deps-{{ checksum "<< parameters.lockfile >>" }}
+          paths:
+            - ~/.npm
+
+parameters:
+  run-nightly:
+    type: boolean
+    default: false
+
+jobs:
+  build:
+    executor: node-exec
+    steps:
+      - checkout
+      - install-deps
+      - run:
+          name: Build
+          command: |
+            npm run build
+            echo "built $CIRCLE_SHA1 on $CIRCLE_BRANCH"
+      - persist_to_workspace:
+          root: .
+          paths: [dist, node_modules]
+  test:
+    executor: node-exec
+    parallelism: 2
+    parameters:
+      suite:
+        type: string
+        default: unit
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: Run << parameters.suite >> tests
+          command: npm run test:<< parameters.suite >> -- $(circleci tests glob "test/**/*.spec.js" | circleci tests split)
+      - store_test_results:
+          path: reports
+      - store_artifacts:
+          path: coverage
+          destination: coverage
+  deploy:
+    machine:
+      image: ubuntu-2204:current
+    steps:
+      - attach_workspace:
+          at: .
+      - add_ssh_keys
+      - run:
+          name: Deploy
+          command: ./deploy.sh $CIRCLE_TAG
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - build
+      - test:
+          name: unit-tests
+          suite: unit
+          requires: [build]
+      - test:
+          name: e2e-tests
+          suite: e2e
+          requires: [build]
+          filters:
+            branches:
+              only: [main, /release\/.*/]
+      - hold:
+          type: approval
+          requires: [unit-tests, e2e-tests]
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [hold]
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 2 * * *"
+          filters:
+            branches:
+              only: main
+    jobs:
+      - build
+      - test:
+          requires: [build]

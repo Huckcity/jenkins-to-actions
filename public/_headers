@@ -7,5 +7,9 @@
   Cache-Control: public, max-age=600
 /convert.js
   Cache-Control: public, max-age=600
+/converters/*
+  Cache-Control: public, max-age=600
+/vendor/*
+  Cache-Control: public, max-age=86400
 /examples/*
   Cache-Control: public, max-age=3600

@@ -1,0 +1,40 @@
+    <h2>What this converter does</h2>
+    <p>Paste a <code>bitbucket-pipelines.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. YAML anchors in <code>definitions</code> are resolved; every pipeline section (default, branches, pull-requests, tags, custom) becomes a chain of jobs with the right trigger condition. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>Common Atlassian pipes are mapped to Marketplace actions; others become <code>TODO</code> steps that fail loudly with their variables quoted.</p>
+
+    <h2>How Bitbucket Pipelines concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>Bitbucket Pipelines</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>pipelines: default</code></td><td>jobs on <code>push</code></td><td>Excluded on branches that have their own pipeline.</td></tr>
+        <tr><td><code>branches: name</code></td><td>jobs with <code>if: github.ref == …</code></td><td>Globs become <code>startsWith</code>.</td></tr>
+        <tr><td><code>pull-requests:</code></td><td><code>on.pull_request</code> jobs</td><td></td></tr>
+        <tr><td><code>tags:</code></td><td><code>on.push.tags</code> jobs</td><td></td></tr>
+        <tr><td><code>custom:</code></td><td><code>workflow_dispatch</code> with a <code>pipeline</code> choice</td><td>Pipeline <code>variables</code> become inputs.</td></tr>
+        <tr><td><code>- step:</code></td><td>one job each, chained with <code>needs</code></td><td>Later jobs download earlier jobs' artifacts.</td></tr>
+        <tr><td><code>- parallel:</code></td><td>sibling jobs</td><td>The next step waits for all of them.</td></tr>
+        <tr><td><code>- stage:</code></td><td>flattened steps with the stage's environment</td><td></td></tr>
+        <tr><td><code>image:</code></td><td><code>container:</code></td><td>Private image credentials become secrets; <code>atlassian/default-image</code> is dropped.</td></tr>
+        <tr><td><code>services:</code></td><td><code>services:</code></td><td>From <code>definitions.services</code>; the <code>docker</code> service is dropped.</td></tr>
+        <tr><td><code>caches:</code></td><td><code>actions/cache</code></td><td>Presets (node, pip, maven, gradle, composer …) and custom definitions.</td></tr>
+        <tr><td><code>artifacts:</code></td><td><code>upload-artifact</code> + <code>download-artifact</code></td><td></td></tr>
+        <tr><td><code>deployment:</code>, <code>trigger: manual</code></td><td><code>environment:</code></td><td>Add required reviewers for manual steps.</td></tr>
+        <tr><td><code>max-time</code>, <code>clone: depth</code>, <code>runs-on</code></td><td><code>timeout-minutes</code>, <code>fetch-depth</code>, self-hosted labels</td><td></td></tr>
+        <tr><td><code>after-script</code></td><td>step with <code>if: always()</code></td><td></td></tr>
+        <tr><td><code>pipe: atlassian/aws-s3-deploy</code>, <code>ssh-run</code>, <code>scp-deploy</code>, <code>slack-notify</code>, <code>npm-publish</code>, <code>heroku-deploy</code>, <code>firebase-deploy</code>, <code>aws-ecs-deploy</code> …</td><td>matching actions or <code>run:</code></td><td><code>docker://image</code> pipes become <code>docker run</code>.</td></tr>
+        <tr><td><code>$BITBUCKET_COMMIT</code>, <code>$BITBUCKET_BUILD_NUMBER</code> …</td><td><code>env:</code> shim</td><td>Used variables are defined from the <code>github</code> context.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>Repository and deployment variables</strong> set in Bitbucket must be recreated as GitHub variables or secrets.</li>
+      <li><strong>Condition changesets</strong> become notes; use <code>on.push.paths</code> or <code>dorny/paths-filter</code>.</li>
+      <li><strong>Runner size</strong> (<code>size: 2x</code>) has no direct equivalent; pick a larger hosted runner if memory matters.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my pipeline uploaded anywhere?</h3>
+    <p>No. The converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/bitbucket.js" rel="noopener">bitbucket.js on GitHub</a>.</p>
+    <h3>Can I run this from the command line?</h3>
+    <p>Yes: <code>npx jenkins-to-actions convert bitbucket-pipelines.yml</code>.</p>

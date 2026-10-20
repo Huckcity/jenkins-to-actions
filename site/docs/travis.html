@@ -1,0 +1,37 @@
+    <h2>What this converter does</h2>
+    <p>Paste a <code>.travis.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. The implicit build matrix (<code>os</code> × language versions × <code>env</code>) becomes <code>strategy.matrix</code>, <code>jobs.include</code> entries become their own jobs, and build stages become sequential groups. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>Anything without a clean equivalent becomes a <code>TODO</code> step that fails loudly with the original quoted.</p>
+
+    <h2>How Travis CI concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>Travis CI</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>language:</code> + version list</td><td><code>actions/setup-*</code> in a matrix</td><td>node_js, python, ruby, go, java, php, rust, elixir, dart, csharp, haskell, perl, scala, c/cpp.</td></tr>
+        <tr><td><code>os:</code> / <code>dist:</code></td><td><code>runs-on</code> matrix</td><td>jammy → ubuntu-22.04, osx → macos-latest, windows → windows-latest.</td></tr>
+        <tr><td><code>env:</code> matrix / <code>global</code></td><td><code>strategy.matrix</code> / <code>env:</code></td><td><code>secure:</code> values become notes to create secrets.</td></tr>
+        <tr><td><code>jobs.include</code> / <code>exclude</code> / <code>allow_failures</code> / <code>fast_finish</code></td><td>extra jobs, removed legs, <code>continue-on-error</code>, <code>fail-fast</code></td><td></td></tr>
+        <tr><td><code>stages:</code></td><td>job groups chained with <code>needs</code></td><td>Stage <code>if:</code> conditions applied.</td></tr>
+        <tr><td><code>before_install</code>, <code>install</code>, <code>before_script</code>, <code>script</code></td><td>steps in order</td><td>Language defaults emitted when <code>install</code>/<code>script</code> are missing.</td></tr>
+        <tr><td><code>after_success</code> / <code>after_failure</code> / <code>after_script</code></td><td>steps with <code>if: success()</code> / <code>failure()</code> / <code>always()</code></td><td></td></tr>
+        <tr><td><code>services:</code> (postgresql, mysql, redis, mongodb …)</td><td><code>services:</code> containers</td><td>Linux jobs only; default ports published.</td></tr>
+        <tr><td><code>addons: apt / homebrew / snaps / sonarcloud</code></td><td>install steps or actions</td><td>Chrome and Firefox are preinstalled.</td></tr>
+        <tr><td><code>cache:</code></td><td><code>actions/cache</code></td><td>Presets and <code>directories</code>.</td></tr>
+        <tr><td><code>branches: only / except</code></td><td><code>on.push.branches</code></td><td>Regexes approximated as globs.</td></tr>
+        <tr><td><code>if:</code> conditions</td><td><code>if:</code></td><td><code>branch</code>, <code>tag IS present</code>, <code>type</code>, <code>env()</code>, <code>repo</code>, <code>fork</code>, AND/OR/NOT.</td></tr>
+        <tr><td><code>deploy:</code> pages / npm / releases / pypi / rubygems / heroku / s3 / firebase / script</td><td>matching actions or <code>run:</code></td><td>Other providers become TODOs.</td></tr>
+        <tr><td><code>$TRAVIS_BRANCH</code>, <code>$TRAVIS_TAG</code>, <code>$TRAVIS_OS_NAME</code> …</td><td><code>env:</code> shim</td><td>Used variables are defined from the <code>github</code> context.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>Encrypted variables</strong> cannot be decrypted; recreate each as a repository secret.</li>
+      <li><strong>Database credentials</strong> differ: Travis services used passwordless defaults, the containers here allow empty passwords or trust auth. Check <code>env</code>.</li>
+      <li><strong>Deploy providers</strong> need <code>permissions:</code> (<code>contents: write</code> for Pages and Releases).</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my file uploaded anywhere?</h3>
+    <p>No. The converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/travis.js" rel="noopener">travis.js on GitHub</a>.</p>
+    <h3>Can I run this from the command line?</h3>
+    <p>Yes: <code>npx jenkins-to-actions convert .travis.yml</code>.</p>

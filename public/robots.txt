@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://jenkins-to-actions.adam-p-gibbons.workers.dev/sitemap.xml

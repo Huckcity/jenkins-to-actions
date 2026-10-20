@@ -1,0 +1,42 @@
+    <h2>What this converter does</h2>
+    <p>Paste an <code>azure-pipelines.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. Stages, jobs, deployment jobs, steps and more than fifty built-in tasks are handled. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>Templates (<code>- template:</code>, <code>extends:</code>) are not fetched: paste the expanded pipeline, or convert each template separately. Anything without a clean equivalent becomes a <code>TODO</code> step that fails loudly.</p>
+
+    <h2>How Azure Pipelines concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>Azure Pipelines</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>trigger:</code> / <code>pr:</code></td><td><code>on.push</code> / <code>on.pull_request</code></td><td>Branch, tag and path include/exclude; <code>batch: true</code> becomes <code>concurrency</code>.</td></tr>
+        <tr><td><code>schedules:</code></td><td><code>on.schedule</code></td><td>Runs on the default branch only.</td></tr>
+        <tr><td><code>parameters:</code></td><td><code>workflow_dispatch.inputs</code></td><td><code>${{ parameters.x }}</code> becomes <code>${{ inputs.x }}</code>; <code>values</code> become a choice.</td></tr>
+        <tr><td><code>variables:</code></td><td><code>env:</code></td><td>Variable groups must be recreated as repository or environment secrets.</td></tr>
+        <tr><td><code>$(Build.SourceBranchName)</code> …</td><td><code>github.*</code> context</td><td>Thirty-odd predefined variables are mapped; user variables become <code>${{ env.X }}</code>.</td></tr>
+        <tr><td><code>pool: vmImage</code></td><td><code>runs-on</code></td><td>Named pools become <code>[self-hosted, …]</code>.</td></tr>
+        <tr><td><code>stages:</code> / <code>dependsOn:</code></td><td><code>needs:</code></td><td>Stage dependencies fan in to every job of the stage.</td></tr>
+        <tr><td><code>condition:</code></td><td><code>if:</code></td><td><code>succeeded()</code>, <code>and/or/not</code>, <code>eq/ne/startsWith/contains/in</code>, <code>variables[...]</code>.</td></tr>
+        <tr><td><code>strategy: matrix</code></td><td><code>strategy.matrix.include</code></td><td>Legs keep their names; an image column becomes <code>runs-on</code>.</td></tr>
+        <tr><td><code>deployment:</code> job</td><td><code>environment:</code></td><td><code>runOnce</code>/<code>rolling</code>/<code>canary</code> hooks flattened into steps.</td></tr>
+        <tr><td><code>script</code> / <code>bash</code> / <code>pwsh</code> / <code>powershell</code></td><td><code>run:</code></td><td>With the matching <code>shell:</code>.</td></tr>
+        <tr><td><code>NodeTool</code>, <code>UsePythonVersion</code>, <code>UseDotNet</code>, <code>JavaToolInstaller</code>, <code>GoTool</code></td><td><code>actions/setup-*</code></td><td></td></tr>
+        <tr><td><code>Npm</code>, <code>DotNetCoreCLI</code>, <code>Maven</code>, <code>Gradle</code>, <code>VSBuild</code>, <code>CmdLine</code>, <code>Bash</code>, <code>PowerShell</code></td><td><code>run:</code> commands</td><td>Globs in <code>DotNetCoreCLI</code> are flagged.</td></tr>
+        <tr><td><code>PublishBuildArtifacts</code>, <code>PublishPipelineArtifact</code>, <code>download:</code></td><td><code>upload-artifact</code> / <code>download-artifact</code></td><td></td></tr>
+        <tr><td><code>PublishTestResults</code></td><td><code>mikepenz/action-junit-report</code> or <code>dorny/test-reporter</code></td><td>By result format.</td></tr>
+        <tr><td><code>Cache@2</code></td><td><code>actions/cache</code></td><td>File parts of the key become <code>hashFiles()</code>.</td></tr>
+        <tr><td><code>Docker@2</code></td><td><code>docker/login-action</code> + <code>docker/build-push-action</code></td><td>Service connection becomes registry secrets.</td></tr>
+        <tr><td><code>AzureCLI</code>, <code>AzureWebApp</code>, <code>AzureFunctionApp</code>, <code>AzureStaticWebApp</code></td><td><code>azure/login</code> + <code>azure/*</code> actions</td><td>Use OIDC federated credentials.</td></tr>
+        <tr><td><code>Kubernetes</code>, <code>HelmDeploy</code>, <code>Terraform*</code>, <code>SonarQube*</code>, <code>GitHubRelease</code></td><td>Matching actions or TODO</td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>Service connections</strong> have no equivalent. Each becomes a set of secrets (or an OIDC login) you create in GitHub.</li>
+      <li><strong>Artifact staging.</strong> <code>$(Build.ArtifactStagingDirectory)</code> becomes <code>_artifacts</code> in the workspace; create it before writing to it.</li>
+      <li><strong>Runtime expressions</strong> (<code>$[ ... ]</code>) are left as-is for you to translate.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my pipeline uploaded anywhere?</h3>
+    <p>No. The converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/azure.js" rel="noopener">azure.js on GitHub</a>.</p>
+    <h3>How does this compare with GitHub Actions Importer?</h3>
+    <p>Actions Importer connects to Azure DevOps and converts in bulk, including task mappings you configure. This page needs nothing installed and no connection. The same converter runs as <code>npx jenkins-to-actions convert azure-pipelines.yml</code>.</p>

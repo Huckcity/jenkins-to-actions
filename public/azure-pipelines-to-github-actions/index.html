@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Azure Pipelines to GitHub Actions converter</title>
+<meta name="description" content="Paste an azure-pipelines.yml, get a GitHub Actions workflow. Stages, jobs, deployment jobs, matrix strategies, conditions, variables, parameters and 50+ built-in tasks are mapped. Runs in your browser.">
+<link rel="canonical" href="https://jenkins-to-actions.adam-p-gibbons.workers.dev/azure-pipelines-to-github-actions/">
+<meta property="og:title" content="Azure Pipelines → GitHub Actions converter">
+<meta property="og:description" content="Paste an azure-pipelines.yml, get a GitHub Actions workflow. Stages, jobs, deployment jobs, matrix strategies, conditions, variables, parameters and 50+ built-in tasks are mapped. Runs in your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d33833'/%3E%3Cpath d='M8 16h12M15 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1b1f24;--muted:#5b6470;--line:#d9dee5;--accent:#1f6feb;--accent-ink:#fff;--warn-bg:#fff6e0;--warn-line:#f0c36d;--code-bg:#0f1419;--code-ink:#e6edf3;--ok:#1a7f37}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--muted:#8b949e;--line:#30363d;--accent:#2f81f7;--warn-bg:#2b2111;--warn-line:#7a5a1e;--code-bg:#0a0d12;--code-ink:#e6edf3;--ok:#3fb950}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:1.1rem;margin:0;font-weight:650;letter-spacing:-.01em}
+header h1 span{color:var(--muted);font-weight:400}
+.actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+button,select,input[type=text]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.4rem .7rem}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:hover{border-color:var(--accent)}
+main{max-width:1400px;margin:0 auto;padding:1rem}
+.opts{display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;margin:0 0 .8rem;font-size:.92rem;color:var(--muted)}
+.opts label{display:flex;gap:.35rem;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.pane{display:flex;flex-direction:column;min-height:60vh}
+.pane .bar{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted);margin-bottom:.35rem}
+textarea,pre.out{flex:1;width:100%;min-height:55vh;margin:0;padding:.8rem;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);color:var(--code-ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;resize:vertical}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+pre.out .c{color:#8b949e}pre.out .k{color:#79c0ff}pre.out .s{color:#a5d6ff}pre.out .t{color:#ffa657}
+.notes{margin:1rem 0 0;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.8rem 1rem}
+.notes h2{font-size:.95rem;margin:0 0 .4rem}
+.notes ul{margin:0;padding-left:1.2rem}
+.notes li{margin:.25rem 0}
+.notes code,.doc code{background:rgba(127,127,127,.15);padding:.05em .3em;border-radius:4px;font-size:.9em}
+.notes.ok{background:transparent;border-color:var(--ok)}
+.support{margin:1.5rem 0;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.9rem 1rem}
+.support p{margin:0}
+.support .btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.support a.btn{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:.4rem .8rem;color:var(--ink);background:var(--bg)}
+.support a.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.doc{max-width:860px;margin:2rem auto 3rem;color:var(--ink)}
+.doc h2{font-size:1.25rem;margin:1.8rem 0 .6rem}
+.doc h3{font-size:1.02rem;margin:1.2rem 0 .4rem}
+.doc table{border-collapse:collapse;width:100%;font-size:.92rem}
+.doc th,.doc td{text-align:left;border-bottom:1px solid var(--line);padding:.4rem .5rem;vertical-align:top}
+.doc th{color:var(--muted);font-weight:600}
+.sources{max-width:860px;margin:1.5rem auto 0;font-size:.9rem;color:var(--muted);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}.sources a{white-space:nowrap}.sources a.current{color:var(--ink);font-weight:600;text-decoration:none}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem;border-top:1px solid var(--line)}
+.sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body data-source="azure">
+<header>
+  <h1>Azure Pipelines → GitHub Actions <span>converter</span></h1>
+  <div class="actions">
+    <select id="example" aria-label="Load an example">
+      <option value="">Load an example…</option>
+      <option value="azure-pipelines.yml">Stages, matrix, tasks, deployment job</option>
+    </select>
+    <button id="copy">Copy YAML</button>
+    <button id="download" class="primary">Download workflow.yml</button>
+  </div>
+</header>
+<main>
+  <div class="opts">
+
+    <label>Default runner
+      <select id="runner">
+        <option>ubuntu-latest</option><option>ubuntu-24.04</option><option>ubuntu-22.04</option><option>windows-latest</option><option>macos-latest</option><option>self-hosted</option>
+      </select>
+    </label>
+    <label>Workflow name <input type="text" id="wfname" placeholder="CI" size="12"></label>
+    <label><input type="checkbox" id="checkout" checked> Add actions/checkout</label>
+    <span>Everything runs in your browser. Nothing is uploaded.</span>
+  </div>
+  <div class="grid">
+    <div class="pane">
+      <div class="bar"><span>azure-pipelines.yml</span><span id="inmeta"></span></div>
+      <textarea id="in" spellcheck="false" aria-label="Jenkinsfile input" placeholder="trigger: [main]&#10;&#10;pool:&#10;  vmImage: ubuntu-latest&#10;&#10;steps:&#10;  - task: NodeTool@0&#10;    inputs:&#10;      versionSpec: '20.x'&#10;  - script: npm ci &amp;&amp; npm test&#10;    displayName: Test"></textarea>
+    </div>
+    <div class="pane">
+      <div class="bar"><span>.github/workflows/ci.yml</span><span id="outmeta"></span></div>
+      <pre class="out" id="out" aria-live="polite"></pre>
+    </div>
+  </div>
+  <section class="notes" id="notes" hidden><h2 id="notes-title">Review before you commit</h2><ul id="notes-list"></ul></section>
+
+  <section class="support">
+    <p><strong>Useful?</strong> This tool is free and has no ads. If it saved you an afternoon, a small sponsorship keeps it maintained.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/sponsors/Huckcity" rel="noopener">Sponsor on GitHub</a>
+      <a class="btn" href="https://github.com/Huckcity/jenkins-to-actions" rel="noopener">Source on GitHub</a>
+      <a class="btn" href="mailto:adam.p.gibbons@gmail.com?subject=Jenkins%20to%20GitHub%20Actions%20migration">Migrating a whole Jenkins estate? Email me</a>
+    </div>
+  </section>
+
+  <nav class="sources" aria-label="Other converters"><span>Convert from:</span><a href="/">Jenkinsfile</a><span aria-hidden="true">·</span><a href="/gitlab-ci-to-github-actions/">GitLab CI</a><span aria-hidden="true">·</span><a class="current" aria-current="page" href="/azure-pipelines-to-github-actions/">Azure Pipelines</a><span aria-hidden="true">·</span><a href="/circleci-to-github-actions/">CircleCI</a><span aria-hidden="true">·</span><a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a><span aria-hidden="true">·</span><a href="/travis-ci-to-github-actions/">Travis CI</a></nav>
+  <article class="doc">
+    <h2>What this converter does</h2>
+    <p>Paste an <code>azure-pipelines.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. Stages, jobs, deployment jobs, steps and more than fifty built-in tasks are handled. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>Templates (<code>- template:</code>, <code>extends:</code>) are not fetched: paste the expanded pipeline, or convert each template separately. Anything without a clean equivalent becomes a <code>TODO</code> step that fails loudly.</p>
+
+    <h2>How Azure Pipelines concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>Azure Pipelines</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>trigger:</code> / <code>pr:</code></td><td><code>on.push</code> / <code>on.pull_request</code></td><td>Branch, tag and path include/exclude; <code>batch: true</code> becomes <code>concurrency</code>.</td></tr>
+        <tr><td><code>schedules:</code></td><td><code>on.schedule</code></td><td>Runs on the default branch only.</td></tr>
+        <tr><td><code>parameters:</code></td><td><code>workflow_dispatch.inputs</code></td><td><code>${{ parameters.x }}</code> becomes <code>${{ inputs.x }}</code>; <code>values</code> become a choice.</td></tr>
+        <tr><td><code>variables:</code></td><td><code>env:</code></td><td>Variable groups must be recreated as repository or environment secrets.</td></tr>
+        <tr><td><code>$(Build.SourceBranchName)</code> …</td><td><code>github.*</code> context</td><td>Thirty-odd predefined variables are mapped; user variables become <code>${{ env.X }}</code>.</td></tr>
+        <tr><td><code>pool: vmImage</code></td><td><code>runs-on</code></td><td>Named pools become <code>[self-hosted, …]</code>.</td></tr>
+        <tr><td><code>stages:</code> / <code>dependsOn:</code></td><td><code>needs:</code></td><td>Stage dependencies fan in to every job of the stage.</td></tr>
+        <tr><td><code>condition:</code></td><td><code>if:</code></td><td><code>succeeded()</code>, <code>and/or/not</code>, <code>eq/ne/startsWith/contains/in</code>, <code>variables[...]</code>.</td></tr>
+        <tr><td><code>strategy: matrix</code></td><td><code>strategy.matrix.include</code></td><td>Legs keep their names; an image column becomes <code>runs-on</code>.</td></tr>
+        <tr><td><code>deployment:</code> job</td><td><code>environment:</code></td><td><code>runOnce</code>/<code>rolling</code>/<code>canary</code> hooks flattened into steps.</td></tr>
+        <tr><td><code>script</code> / <code>bash</code> / <code>pwsh</code> / <code>powershell</code></td><td><code>run:</code></td><td>With the matching <code>shell:</code>.</td></tr>
+        <tr><td><code>NodeTool</code>, <code>UsePythonVersion</code>, <code>UseDotNet</code>, <code>JavaToolInstaller</code>, <code>GoTool</code></td><td><code>actions/setup-*</code></td><td></td></tr>
+        <tr><td><code>Npm</code>, <code>DotNetCoreCLI</code>, <code>Maven</code>, <code>Gradle</code>, <code>VSBuild</code>, <code>CmdLine</code>, <code>Bash</code>, <code>PowerShell</code></td><td><code>run:</code> commands</td><td>Globs in <code>DotNetCoreCLI</code> are flagged.</td></tr>
+        <tr><td><code>PublishBuildArtifacts</code>, <code>PublishPipelineArtifact</code>, <code>download:</code></td><td><code>upload-artifact</code> / <code>download-artifact</code></td><td></td></tr>
+        <tr><td><code>PublishTestResults</code></td><td><code>mikepenz/action-junit-report</code> or <code>dorny/test-reporter</code></td><td>By result format.</td></tr>
+        <tr><td><code>Cache@2</code></td><td><code>actions/cache</code></td><td>File parts of the key become <code>hashFiles()</code>.</td></tr>
+        <tr><td><code>Docker@2</code></td><td><code>docker/login-action</code> + <code>docker/build-push-action</code></td><td>Service connection becomes registry secrets.</td></tr>
+        <tr><td><code>AzureCLI</code>, <code>AzureWebApp</code>, <code>AzureFunctionApp</code>, <code>AzureStaticWebApp</code></td><td><code>azure/login</code> + <code>azure/*</code> actions</td><td>Use OIDC federated credentials.</td></tr>
+        <tr><td><code>Kubernetes</code>, <code>HelmDeploy</code>, <code>Terraform*</code>, <code>SonarQube*</code>, <code>GitHubRelease</code></td><td>Matching actions or TODO</td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>Service connections</strong> have no equivalent. Each becomes a set of secrets (or an OIDC login) you create in GitHub.</li>
+      <li><strong>Artifact staging.</strong> <code>$(Build.ArtifactStagingDirectory)</code> becomes <code>_artifacts</code> in the workspace; create it before writing to it.</li>
+      <li><strong>Runtime expressions</strong> (<code>$[ ... ]</code>) are left as-is for you to translate.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my pipeline uploaded anywhere?</h3>
+    <p>No. The converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/azure.js" rel="noopener">azure.js on GitHub</a>.</p>
+    <h3>How does this compare with GitHub Actions Importer?</h3>
+    <p>Actions Importer connects to Azure DevOps and converts in bulk, including task mappings you configure. This page needs nothing installed and no connection. The same converter runs as <code>npx jenkins-to-actions convert azure-pipelines.yml</code>.</p>
+
+  </article>
+</main>
+<footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>
+<script type="module" src="/app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c4095c97d0ac46a391f809b82400b69f"}'></script>
+</body>
+</html>

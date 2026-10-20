@@ -1,0 +1,65 @@
+language: node_js
+dist: jammy
+os:
+  - linux
+  - osx
+node_js:
+  - 18
+  - 20
+env:
+  global:
+    - CI=true
+    - secure: "abc123encrypted=="
+  matrix:
+    - DB=postgres
+    - DB=sqlite
+services:
+  - postgresql
+  - redis-server
+addons:
+  apt:
+    packages: [libxml2-dev]
+cache:
+  npm: true
+  directories:
+    - node_modules
+branches:
+  only:
+    - main
+    - /^release\/.*$/
+before_install:
+  - npm install -g npm@latest
+install:
+  - npm ci
+script:
+  - npm run lint
+  - npm test -- --db $DB
+after_success:
+  - npx codecov
+after_failure:
+  - cat npm-debug.log
+jobs:
+  fast_finish: true
+  allow_failures:
+    - os: osx
+  exclude:
+    - os: osx
+      env: DB=postgres
+  include:
+    - stage: deploy
+      name: Publish package
+      os: linux
+      node_js: 20
+      if: tag IS present
+      script: npm run build
+      deploy:
+        provider: npm
+        skip_cleanup: true
+        on:
+          tags: true
+stages:
+  - test
+  - name: deploy
+    if: branch = main OR tag IS present
+notifications:
+  email: false

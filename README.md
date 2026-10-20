@@ -1,8 +1,21 @@
-# Jenkinsfile → GitHub Actions
+# CI → GitHub Actions converters
 
-Two ways to move off Jenkins:
+Move to GitHub Actions from **Jenkins, GitLab CI, Azure Pipelines, CircleCI, Bitbucket Pipelines or Travis CI**. Everything runs client-side or on your machine; nothing is uploaded.
 
-1. **Web converter** — paste one Jenkinsfile, get a workflow. Client-side, nothing uploaded. **Live:** https://jenkins-to-actions.adam-p-gibbons.workers.dev
+| Source | Web page | CLI |
+|---|---|---|
+| Jenkinsfile | https://jenkins-to-actions.adam-p-gibbons.workers.dev/ | `npx jenkins-to-actions convert Jenkinsfile` |
+| GitLab CI | https://jenkins-to-actions.adam-p-gibbons.workers.dev/gitlab-ci-to-github-actions/ | `npx jenkins-to-actions convert .gitlab-ci.yml` |
+| Azure Pipelines | https://jenkins-to-actions.adam-p-gibbons.workers.dev/azure-pipelines-to-github-actions/ | `npx jenkins-to-actions convert azure-pipelines.yml` |
+| CircleCI | https://jenkins-to-actions.adam-p-gibbons.workers.dev/circleci-to-github-actions/ | `npx jenkins-to-actions convert .circleci/config.yml` |
+| Bitbucket Pipelines | https://jenkins-to-actions.adam-p-gibbons.workers.dev/bitbucket-pipelines-to-github-actions/ | `npx jenkins-to-actions convert bitbucket-pipelines.yml` |
+| Travis CI | https://jenkins-to-actions.adam-p-gibbons.workers.dev/travis-ci-to-github-actions/ | `npx jenkins-to-actions convert .travis.yml` |
+
+The source system is detected from the file name or content; force it with `--from gitlab|azure|circleci|bitbucket|travis|jenkins`.
+
+Two ways to move off Jenkins specifically:
+
+1. **Web converter** — paste one Jenkinsfile, get a workflow.
 2. **Estate audit CLI** — point it at a Jenkins server (read-only) and get an inventory of every job, converted workflows for everything it can convert (pipelines *and* freestyle, Maven and matrix jobs), an effort estimate per job, the secrets to create, and a suggested migration order.
 
 ```sh
@@ -34,13 +47,16 @@ Anything else becomes a `TODO` step that fails loudly with the original quoted, 
 ## Layout
 
 - `public/convert.js` — Jenkinsfile parser + workflow emitter (no dependencies; browser and Node).
-- `public/index.html`, `public/app.js` — the web page.
+- `public/converters/` — GitLab CI, Azure Pipelines, CircleCI, Bitbucket Pipelines and Travis CI converters (YAML parsed with the bundled `yaml` library in `public/vendor/`).
+- `site/` — page template, per-source content and `build.js`, which generates every page under `public/`.
+- `public/app.js` — the page script.
 - `cli/` — `audit.js` (server crawl, scoring, report), `freestyle.js` (config.xml → workflow), `xml.js`.
 - `test/` — fixtures converted in both layouts and checked with [actionlint](https://github.com/rhysd/actionlint); `test/e2e/` builds a throwaway Jenkins in Podman for end-to-end runs.
 
 ```sh
-npm test        # fixtures → YAML → actionlint, plus CLI tests
-npm run deploy  # Cloudflare Workers static assets
+npm test        # fixtures → YAML → actionlint, plus CLI and converter tests
+npm run build   # regenerate the pages from site/
+npm run deploy  # build + Cloudflare Workers static assets
 ```
 
 ## Support

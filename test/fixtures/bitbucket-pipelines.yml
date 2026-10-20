@@ -1,0 +1,93 @@
+image: node:20
+
+options:
+  max-time: 30
+
+clone:
+  depth: 1
+
+definitions:
+  caches:
+    cypress: ~/.cache/Cypress
+  services:
+    postgres:
+      image: postgres:16
+      variables:
+        POSTGRES_PASSWORD: pw
+  steps:
+    - step: &build
+        name: Build
+        caches: [node]
+        script:
+          - npm ci
+          - npm run build
+        artifacts:
+          - dist/**
+
+pipelines:
+  default:
+    - step: *build
+    - parallel:
+        - step:
+            name: Unit tests
+            caches: [node]
+            script:
+              - npm ci
+              - npm test
+        - step:
+            name: Lint
+            script:
+              - npm ci
+              - npm run lint
+  branches:
+    main:
+      - step: *build
+      - step:
+          name: Integration
+          services: [postgres, docker]
+          caches: [node, cypress]
+          script:
+            - npm ci
+            - npm run test:integration
+          after-script:
+            - cat logs/*.log
+      - step:
+          name: Deploy to staging
+          deployment: staging
+          script:
+            - pipe: atlassian/aws-s3-deploy:1.1.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_KEY
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET
+                AWS_DEFAULT_REGION: eu-west-1
+                S3_BUCKET: my-bucket-staging
+                LOCAL_PATH: dist
+      - step:
+          name: Deploy to production
+          deployment: production
+          trigger: manual
+          script:
+            - echo "deploying $BITBUCKET_COMMIT build $BITBUCKET_BUILD_NUMBER"
+            - ./deploy.sh production
+  pull-requests:
+    '**':
+      - step: *build
+  tags:
+    'v*':
+      - step:
+          name: Release
+          script:
+            - npm ci
+            - pipe: atlassian/npm-publish:0.3.0
+              variables:
+                NPM_TOKEN: $NPM_TOKEN
+  custom:
+    nightly-perf:
+      - variables:
+          - name: TARGET
+            default: staging
+            allowed-values: [staging, production]
+      - step:
+          name: Perf
+          script:
+            - npm run perf -- --target $TARGET

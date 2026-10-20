@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CircleCI to GitHub Actions converter</title>
+<meta name="description" content="Paste a .circleci/config.yml, get a GitHub Actions workflow. Executors, commands, workflows with requires and filters, caches, workspaces, approvals and common orbs are mapped. Runs in your browser.">
+<link rel="canonical" href="https://jenkins-to-actions.adam-p-gibbons.workers.dev/circleci-to-github-actions/">
+<meta property="og:title" content="CircleCI → GitHub Actions converter">
+<meta property="og:description" content="Paste a .circleci/config.yml, get a GitHub Actions workflow. Executors, commands, workflows with requires and filters, caches, workspaces, approvals and common orbs are mapped. Runs in your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d33833'/%3E%3Cpath d='M8 16h12M15 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1b1f24;--muted:#5b6470;--line:#d9dee5;--accent:#1f6feb;--accent-ink:#fff;--warn-bg:#fff6e0;--warn-line:#f0c36d;--code-bg:#0f1419;--code-ink:#e6edf3;--ok:#1a7f37}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--muted:#8b949e;--line:#30363d;--accent:#2f81f7;--warn-bg:#2b2111;--warn-line:#7a5a1e;--code-bg:#0a0d12;--code-ink:#e6edf3;--ok:#3fb950}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:1.1rem;margin:0;font-weight:650;letter-spacing:-.01em}
+header h1 span{color:var(--muted);font-weight:400}
+.actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+button,select,input[type=text]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.4rem .7rem}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:hover{border-color:var(--accent)}
+main{max-width:1400px;margin:0 auto;padding:1rem}
+.opts{display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;margin:0 0 .8rem;font-size:.92rem;color:var(--muted)}
+.opts label{display:flex;gap:.35rem;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.pane{display:flex;flex-direction:column;min-height:60vh}
+.pane .bar{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted);margin-bottom:.35rem}
+textarea,pre.out{flex:1;width:100%;min-height:55vh;margin:0;padding:.8rem;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);color:var(--code-ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;resize:vertical}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+pre.out .c{color:#8b949e}pre.out .k{color:#79c0ff}pre.out .s{color:#a5d6ff}pre.out .t{color:#ffa657}
+.notes{margin:1rem 0 0;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.8rem 1rem}
+.notes h2{font-size:.95rem;margin:0 0 .4rem}
+.notes ul{margin:0;padding-left:1.2rem}
+.notes li{margin:.25rem 0}
+.notes code,.doc code{background:rgba(127,127,127,.15);padding:.05em .3em;border-radius:4px;font-size:.9em}
+.notes.ok{background:transparent;border-color:var(--ok)}
+.support{margin:1.5rem 0;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.9rem 1rem}
+.support p{margin:0}
+.support .btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.support a.btn{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:.4rem .8rem;color:var(--ink);background:var(--bg)}
+.support a.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.doc{max-width:860px;margin:2rem auto 3rem;color:var(--ink)}
+.doc h2{font-size:1.25rem;margin:1.8rem 0 .6rem}
+.doc h3{font-size:1.02rem;margin:1.2rem 0 .4rem}
+.doc table{border-collapse:collapse;width:100%;font-size:.92rem}
+.doc th,.doc td{text-align:left;border-bottom:1px solid var(--line);padding:.4rem .5rem;vertical-align:top}
+.doc th{color:var(--muted);font-weight:600}
+.sources{max-width:860px;margin:1.5rem auto 0;font-size:.9rem;color:var(--muted);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}.sources a{white-space:nowrap}.sources a.current{color:var(--ink);font-weight:600;text-decoration:none}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem;border-top:1px solid var(--line)}
+.sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body data-source="circleci">
+<header>
+  <h1>CircleCI → GitHub Actions <span>converter</span></h1>
+  <div class="actions">
+    <select id="example" aria-label="Load an example">
+      <option value="">Load an example…</option>
+      <option value="circleci.yml">Executors, commands, workflows, approval, nightly</option>
+    </select>
+    <button id="copy">Copy YAML</button>
+    <button id="download" class="primary">Download workflow.yml</button>
+  </div>
+</header>
+<main>
+  <div class="opts">
+
+    <label>Default runner
+      <select id="runner">
+        <option>ubuntu-latest</option><option>ubuntu-24.04</option><option>ubuntu-22.04</option><option>windows-latest</option><option>macos-latest</option><option>self-hosted</option>
+      </select>
+    </label>
+    <label>Workflow name <input type="text" id="wfname" placeholder="CI" size="12"></label>
+    <label><input type="checkbox" id="checkout" checked> Add actions/checkout</label>
+    <span>Everything runs in your browser. Nothing is uploaded.</span>
+  </div>
+  <div class="grid">
+    <div class="pane">
+      <div class="bar"><span>.circleci/config.yml</span><span id="inmeta"></span></div>
+      <textarea id="in" spellcheck="false" aria-label="Jenkinsfile input" placeholder="version: 2.1&#10;&#10;jobs:&#10;  build:&#10;    docker:&#10;      - image: cimg/node:20.11&#10;    steps:&#10;      - checkout&#10;      - run: npm ci&#10;      - run: npm test&#10;&#10;workflows:&#10;  main:&#10;    jobs:&#10;      - build"></textarea>
+    </div>
+    <div class="pane">
+      <div class="bar"><span>.github/workflows/ci.yml</span><span id="outmeta"></span></div>
+      <pre class="out" id="out" aria-live="polite"></pre>
+    </div>
+  </div>
+  <section class="notes" id="notes" hidden><h2 id="notes-title">Review before you commit</h2><ul id="notes-list"></ul></section>
+
+  <section class="support">
+    <p><strong>Useful?</strong> This tool is free and has no ads. If it saved you an afternoon, a small sponsorship keeps it maintained.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/sponsors/Huckcity" rel="noopener">Sponsor on GitHub</a>
+      <a class="btn" href="https://github.com/Huckcity/jenkins-to-actions" rel="noopener">Source on GitHub</a>
+      <a class="btn" href="mailto:adam.p.gibbons@gmail.com?subject=Jenkins%20to%20GitHub%20Actions%20migration">Migrating a whole Jenkins estate? Email me</a>
+    </div>
+  </section>
+
+  <nav class="sources" aria-label="Other converters"><span>Convert from:</span><a href="/">Jenkinsfile</a><span aria-hidden="true">·</span><a href="/gitlab-ci-to-github-actions/">GitLab CI</a><span aria-hidden="true">·</span><a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a><span aria-hidden="true">·</span><a class="current" aria-current="page" href="/circleci-to-github-actions/">CircleCI</a><span aria-hidden="true">·</span><a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a><span aria-hidden="true">·</span><a href="/travis-ci-to-github-actions/">Travis CI</a></nav>
+  <article class="doc">
+    <h2>What this converter does</h2>
+    <p>Paste a <code>.circleci/config.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. Executors are resolved, reusable <code>commands</code> are expanded inline with their parameters, and every workflow becomes a set of jobs with <code>needs</code>. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>Orbs are not fetched. The commonest orb steps (node, python, docker, aws-cli, codecov, slack, browser-tools) are mapped; others become <code>TODO</code> steps that fail loudly with the original quoted.</p>
+
+    <h2>How CircleCI concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>CircleCI</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>docker:</code> executor</td><td><code>container:</code> + <code>services:</code></td><td>First image is the job container; the rest become services.</td></tr>
+        <tr><td><code>machine:</code> / <code>macos:</code></td><td><code>runs-on</code></td><td>ubuntu, windows, macOS and arm classes.</td></tr>
+        <tr><td><code>executors:</code></td><td>resolved into each job</td><td></td></tr>
+        <tr><td><code>commands:</code></td><td>inlined steps</td><td><code>&lt;&lt; parameters.x &gt;&gt;</code> substituted.</td></tr>
+        <tr><td><code>workflows: jobs: requires</code></td><td><code>needs:</code></td><td>Several workflows merge into one file with prefixed job ids.</td></tr>
+        <tr><td><code>filters: branches / tags</code></td><td><code>if:</code></td><td>Tag-only jobs detected; <code>on.push.tags</code> added.</td></tr>
+        <tr><td><code>type: approval</code></td><td><code>environment: manual-approval</code></td><td>Add required reviewers.</td></tr>
+        <tr><td><code>triggers: schedule</code></td><td><code>on.schedule</code> + <code>if: github.event_name == 'schedule'</code></td><td>Other workflows get the opposite condition.</td></tr>
+        <tr><td><code>matrix: parameters</code></td><td><code>strategy.matrix</code></td><td></td></tr>
+        <tr><td><code>parallelism: N</code></td><td>index matrix</td><td>Replace <code>circleci tests split</code> with your own sharding.</td></tr>
+        <tr><td><code>restore_cache</code> / <code>save_cache</code></td><td><code>actions/cache</code></td><td><code>{{ checksum "f" }}</code> becomes <code>hashFiles('f')</code>.</td></tr>
+        <tr><td><code>persist_to_workspace</code> / <code>attach_workspace</code></td><td><code>upload-artifact</code> / <code>download-artifact</code></td><td>Sources found by walking <code>needs</code>.</td></tr>
+        <tr><td><code>store_artifacts</code>, <code>store_test_results</code></td><td><code>upload-artifact</code>, <code>action-junit-report</code></td><td></td></tr>
+        <tr><td><code>when:</code> / <code>unless:</code> steps</td><td>step <code>if:</code></td><td>Simple <code>equal</code> and parameter conditions.</td></tr>
+        <tr><td><code>setup_remote_docker</code>, <code>add_ssh_keys</code></td><td>dropped / <code>webfactory/ssh-agent</code></td><td>Docker is native on the runner.</td></tr>
+        <tr><td><code>$CIRCLE_SHA1</code>, <code>$CIRCLE_BRANCH</code> …</td><td><code>env:</code> shim</td><td>Used variables are defined from the <code>github</code> context.</td></tr>
+        <tr><td><code>pipeline.parameters</code>, <code>contexts</code></td><td><code>workflow_dispatch.inputs</code>, secrets</td><td>Contexts must be recreated as secrets.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>Orb jobs</strong> (<code>node/test</code>, <code>aws-ecr/build-and-push-image</code> …) are not expanded; write the equivalent job from the Marketplace action.</li>
+      <li><strong>Secondary containers</strong> were reachable on <code>localhost</code> in CircleCI; on GitHub they are reachable by service name from a container job.</li>
+      <li><strong>Dynamic config</strong> (<code>setup: true</code>) cannot be converted; convert the generated config instead.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my config uploaded anywhere?</h3>
+    <p>No. The converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/circleci.js" rel="noopener">circleci.js on GitHub</a>.</p>
+    <h3>Can I run this from the command line?</h3>
+    <p>Yes: <code>npx jenkins-to-actions convert .circleci/config.yml</code>.</p>
+
+  </article>
+</main>
+<footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>
+<script type="module" src="/app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c4095c97d0ac46a391f809b82400b69f"}'></script>
+</body>
+</html>

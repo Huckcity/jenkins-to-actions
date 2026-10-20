@@ -26,3 +26,14 @@ Migrating pipelines off Jenkins? I built a small free tool: paste a Jenkinsfile,
 https://jenkins-to-actions.adam-p-gibbons.workers.dev
 
 Source (MIT): https://github.com/Huckcity/jenkins-to-actions
+
+## Per-source posts (2026-10-20)
+
+Each converter has its own page and its own community. Same body, swap the file name:
+
+- r/gitlab: "I built a client-side .gitlab-ci.yml → GitHub Actions converter (stages, rules, services, artifacts, extends)"
+- r/azuredevops: "azure-pipelines.yml → GitHub Actions converter, 50+ tasks mapped, runs in your browser"
+- r/circleci (small) and the CircleCI Discuss forum: ".circleci/config.yml → GitHub Actions, with orbs/commands/workspaces handled"
+- Atlassian Community (Bitbucket Pipelines): "bitbucket-pipelines.yml → GitHub Actions converter"
+- Travis: no active community; the page is for search traffic only.
+- Hacker News (once the account is old enough): "Show HN: Convert any CI config (Jenkins, GitLab, Azure, CircleCI, Bitbucket, Travis) to GitHub Actions in your browser"

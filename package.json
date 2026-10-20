@@ -9,7 +9,8 @@
   "scripts": {
     "test": "node test/run.js && node --test test/*.test.js",
     "dev": "npx wrangler dev",
-    "deploy": "npx wrangler deploy"
+    "deploy": "node site/build.js && npx wrangler deploy",
+    "build": "node site/build.js"
   },
   "keywords": [
     "jenkins",
@@ -20,6 +21,7 @@
   "author": "Adam Gibbons",
   "license": "MIT",
   "devDependencies": {
+    "esbuild": "^0.25.10",
     "yaml": "^2.8.1"
   },
   "type": "module",
@@ -29,6 +31,9 @@
   "files": [
     "cli",
     "public/convert.js",
+    "public/emit.js",
+    "public/converters",
+    "public/vendor",
     "README.md",
     "LICENSE"
   ],

@@ -1,0 +1,40 @@
+    <h2>What this converter does</h2>
+    <p>Paste a <code>.circleci/config.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. Executors are resolved, reusable <code>commands</code> are expanded inline with their parameters, and every workflow becomes a set of jobs with <code>needs</code>. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>Orbs are not fetched. The commonest orb steps (node, python, docker, aws-cli, codecov, slack, browser-tools) are mapped; others become <code>TODO</code> steps that fail loudly with the original quoted.</p>
+
+    <h2>How CircleCI concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>CircleCI</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>docker:</code> executor</td><td><code>container:</code> + <code>services:</code></td><td>First image is the job container; the rest become services.</td></tr>
+        <tr><td><code>machine:</code> / <code>macos:</code></td><td><code>runs-on</code></td><td>ubuntu, windows, macOS and arm classes.</td></tr>
+        <tr><td><code>executors:</code></td><td>resolved into each job</td><td></td></tr>
+        <tr><td><code>commands:</code></td><td>inlined steps</td><td><code>&lt;&lt; parameters.x &gt;&gt;</code> substituted.</td></tr>
+        <tr><td><code>workflows: jobs: requires</code></td><td><code>needs:</code></td><td>Several workflows merge into one file with prefixed job ids.</td></tr>
+        <tr><td><code>filters: branches / tags</code></td><td><code>if:</code></td><td>Tag-only jobs detected; <code>on.push.tags</code> added.</td></tr>
+        <tr><td><code>type: approval</code></td><td><code>environment: manual-approval</code></td><td>Add required reviewers.</td></tr>
+        <tr><td><code>triggers: schedule</code></td><td><code>on.schedule</code> + <code>if: github.event_name == 'schedule'</code></td><td>Other workflows get the opposite condition.</td></tr>
+        <tr><td><code>matrix: parameters</code></td><td><code>strategy.matrix</code></td><td></td></tr>
+        <tr><td><code>parallelism: N</code></td><td>index matrix</td><td>Replace <code>circleci tests split</code> with your own sharding.</td></tr>
+        <tr><td><code>restore_cache</code> / <code>save_cache</code></td><td><code>actions/cache</code></td><td><code>{{ checksum "f" }}</code> becomes <code>hashFiles('f')</code>.</td></tr>
+        <tr><td><code>persist_to_workspace</code> / <code>attach_workspace</code></td><td><code>upload-artifact</code> / <code>download-artifact</code></td><td>Sources found by walking <code>needs</code>.</td></tr>
+        <tr><td><code>store_artifacts</code>, <code>store_test_results</code></td><td><code>upload-artifact</code>, <code>action-junit-report</code></td><td></td></tr>
+        <tr><td><code>when:</code> / <code>unless:</code> steps</td><td>step <code>if:</code></td><td>Simple <code>equal</code> and parameter conditions.</td></tr>
+        <tr><td><code>setup_remote_docker</code>, <code>add_ssh_keys</code></td><td>dropped / <code>webfactory/ssh-agent</code></td><td>Docker is native on the runner.</td></tr>
+        <tr><td><code>$CIRCLE_SHA1</code>, <code>$CIRCLE_BRANCH</code> …</td><td><code>env:</code> shim</td><td>Used variables are defined from the <code>github</code> context.</td></tr>
+        <tr><td><code>pipeline.parameters</code>, <code>contexts</code></td><td><code>workflow_dispatch.inputs</code>, secrets</td><td>Contexts must be recreated as secrets.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>Orb jobs</strong> (<code>node/test</code>, <code>aws-ecr/build-and-push-image</code> …) are not expanded; write the equivalent job from the Marketplace action.</li>
+      <li><strong>Secondary containers</strong> were reachable on <code>localhost</code> in CircleCI; on GitHub they are reachable by service name from a container job.</li>
+      <li><strong>Dynamic config</strong> (<code>setup: true</code>) cannot be converted; convert the generated config instead.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my config uploaded anywhere?</h3>
+    <p>No. The converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/circleci.js" rel="noopener">circleci.js on GitHub</a>.</p>
+    <h3>Can I run this from the command line?</h3>
+    <p>Yes: <code>npx jenkins-to-actions convert .circleci/config.yml</code>.</p>

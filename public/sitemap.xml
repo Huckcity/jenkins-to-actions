@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://jenkins-to-actions.adam-p-gibbons.workers.dev/</loc></url>
+  <url><loc>https://jenkins-to-actions.adam-p-gibbons.workers.dev/gitlab-ci-to-github-actions/</loc></url>
+  <url><loc>https://jenkins-to-actions.adam-p-gibbons.workers.dev/azure-pipelines-to-github-actions/</loc></url>
+  <url><loc>https://jenkins-to-actions.adam-p-gibbons.workers.dev/circleci-to-github-actions/</loc></url>
+  <url><loc>https://jenkins-to-actions.adam-p-gibbons.workers.dev/bitbucket-pipelines-to-github-actions/</loc></url>
+  <url><loc>https://jenkins-to-actions.adam-p-gibbons.workers.dev/travis-ci-to-github-actions/</loc></url>
+</urlset>

@@ -7,7 +7,7 @@
 <meta name="description" content="Paste a Jenkinsfile, get a GitHub Actions workflow. Converts declarative and scripted pipelines (stages, parallel, matrix, when, credentials, post) in your browser. Nothing is uploaded.">
 <link rel="canonical" href="https://jenkins-to-actions.adam-p-gibbons.workers.dev/">
 <meta property="og:title" content="Jenkinsfile → GitHub Actions converter">
-<meta property="og:description" content="Free, client-side Jenkins pipeline to GitHub Actions workflow converter with a list of everything it could not map.">
+<meta property="og:description" content="Paste a Jenkinsfile, get a GitHub Actions workflow. Converts declarative and scripted pipelines (stages, parallel, matrix, when, credentials, post) in your browser. Nothing is uploaded.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d33833'/%3E%3Cpath d='M8 16h12M15 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
@@ -51,19 +51,20 @@ pre.out .c{color:#8b949e}pre.out .k{color:#79c0ff}pre.out .s{color:#a5d6ff}pre.o
 .doc table{border-collapse:collapse;width:100%;font-size:.92rem}
 .doc th,.doc td{text-align:left;border-bottom:1px solid var(--line);padding:.4rem .5rem;vertical-align:top}
 .doc th{color:var(--muted);font-weight:600}
+.sources{max-width:860px;margin:1.5rem auto 0;font-size:.9rem;color:var(--muted);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}.sources a{white-space:nowrap}.sources a.current{color:var(--ink);font-weight:600;text-decoration:none}
 footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem;border-top:1px solid var(--line)}
 .sr{position:absolute;left:-9999px}
 </style>
 </head>
-<body>
+<body data-source="jenkins">
 <header>
   <h1>Jenkinsfile → GitHub Actions <span>converter</span></h1>
   <div class="actions">
     <select id="example" aria-label="Load an example">
       <option value="">Load an example…</option>
-      <option value="declarative">Declarative (Maven, Docker, params)</option>
-      <option value="parallel-matrix">Parallel stages + matrix</option>
-      <option value="scripted">Scripted (node/stage)</option>
+      <option value="declarative.Jenkinsfile">Declarative (Maven, Docker, params)</option>
+      <option value="parallel-matrix.Jenkinsfile">Parallel stages + matrix</option>
+      <option value="scripted.Jenkinsfile">Scripted (node/stage)</option>
     </select>
     <button id="copy">Copy YAML</button>
     <button id="download" class="primary">Download workflow.yml</button>
@@ -89,16 +90,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
   <div class="grid">
     <div class="pane">
       <div class="bar"><span>Jenkinsfile</span><span id="inmeta"></span></div>
-      <textarea id="in" spellcheck="false" aria-label="Jenkinsfile input" placeholder="pipeline {
-    agent any
-    stages {
-        stage('Build') {
-            steps {
-                sh 'make'
-            }
-        }
-    }
-}"></textarea>
+      <textarea id="in" spellcheck="false" aria-label="Jenkinsfile input" placeholder="pipeline {&#10;    agent any&#10;    stages {&#10;        stage('Build') {&#10;            steps {&#10;                sh 'make'&#10;            }&#10;        }&#10;    }&#10;}"></textarea>
     </div>
     <div class="pane">
       <div class="bar"><span>.github/workflows/ci.yml</span><span id="outmeta"></span></div>
@@ -116,6 +108,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
     </div>
   </section>
 
+  <nav class="sources" aria-label="Other converters"><span>Convert from:</span><a class="current" aria-current="page" href="/">Jenkinsfile</a><span aria-hidden="true">·</span><a href="/gitlab-ci-to-github-actions/">GitLab CI</a><span aria-hidden="true">·</span><a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a><span aria-hidden="true">·</span><a href="/circleci-to-github-actions/">CircleCI</a><span aria-hidden="true">·</span><a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a><span aria-hidden="true">·</span><a href="/travis-ci-to-github-actions/">Travis CI</a></nav>
   <article class="doc">
     <h2>What this converter does</h2>
     <p>Paste a <code>Jenkinsfile</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. It handles declarative pipelines (<code>pipeline { }</code>) and the common shape of scripted pipelines (<code>node { stage { } }</code>). Conversion runs entirely in your browser; your pipeline never leaves the page, which matters because Jenkinsfiles tend to contain internal hostnames and credential IDs.</p>
@@ -176,6 +169,7 @@ npx jenkins-to-actions audit --dir ./jenkins_home/jobs</pre>
     <p>GitHub Actions Importer is a CLI that connects to your Jenkins server and converts pipelines in bulk, including plugin configuration it can read from the server. It is the right tool for a large estate. This page is for the moment you have one Jenkinsfile in front of you and want a workflow to start from without installing anything or connecting a server.</p>
     <h3>The output has errors in it.</h3>
     <p>Every generated workflow is checked against <a href="https://github.com/rhysd/actionlint" rel="noopener">actionlint</a> in this tool's test suite, but your Jenkinsfile may hit a shape the parser does not understand. <a href="mailto:adam.p.gibbons@gmail.com?subject=Jenkinsfile%20converter%20bug">Email the Jenkinsfile</a> (redact what you need to) and it will become a test case.</p>
+  
   </article>
 </main>
 <footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Travis CI to GitHub Actions converter</title>
+<meta name="description" content="Paste a .travis.yml, get a GitHub Actions workflow. Language versions and env become a matrix, build stages become job groups, services, addons, caches, conditions and deploy providers are mapped. Runs in your browser.">
+<link rel="canonical" href="https://jenkins-to-actions.adam-p-gibbons.workers.dev/travis-ci-to-github-actions/">
+<meta property="og:title" content="Travis CI → GitHub Actions converter">
+<meta property="og:description" content="Paste a .travis.yml, get a GitHub Actions workflow. Language versions and env become a matrix, build stages become job groups, services, addons, caches, conditions and deploy providers are mapped. Runs in your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d33833'/%3E%3Cpath d='M8 16h12M15 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1b1f24;--muted:#5b6470;--line:#d9dee5;--accent:#1f6feb;--accent-ink:#fff;--warn-bg:#fff6e0;--warn-line:#f0c36d;--code-bg:#0f1419;--code-ink:#e6edf3;--ok:#1a7f37}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--muted:#8b949e;--line:#30363d;--accent:#2f81f7;--warn-bg:#2b2111;--warn-line:#7a5a1e;--code-bg:#0a0d12;--code-ink:#e6edf3;--ok:#3fb950}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:1.1rem;margin:0;font-weight:650;letter-spacing:-.01em}
+header h1 span{color:var(--muted);font-weight:400}
+.actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+button,select,input[type=text]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.4rem .7rem}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:hover{border-color:var(--accent)}
+main{max-width:1400px;margin:0 auto;padding:1rem}
+.opts{display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;margin:0 0 .8rem;font-size:.92rem;color:var(--muted)}
+.opts label{display:flex;gap:.35rem;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.pane{display:flex;flex-direction:column;min-height:60vh}
+.pane .bar{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted);margin-bottom:.35rem}
+textarea,pre.out{flex:1;width:100%;min-height:55vh;margin:0;padding:.8rem;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);color:var(--code-ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;resize:vertical}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+pre.out .c{color:#8b949e}pre.out .k{color:#79c0ff}pre.out .s{color:#a5d6ff}pre.out .t{color:#ffa657}
+.notes{margin:1rem 0 0;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.8rem 1rem}
+.notes h2{font-size:.95rem;margin:0 0 .4rem}
+.notes ul{margin:0;padding-left:1.2rem}
+.notes li{margin:.25rem 0}
+.notes code,.doc code{background:rgba(127,127,127,.15);padding:.05em .3em;border-radius:4px;font-size:.9em}
+.notes.ok{background:transparent;border-color:var(--ok)}
+.support{margin:1.5rem 0;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.9rem 1rem}
+.support p{margin:0}
+.support .btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.support a.btn{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:.4rem .8rem;color:var(--ink);background:var(--bg)}
+.support a.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.doc{max-width:860px;margin:2rem auto 3rem;color:var(--ink)}
+.doc h2{font-size:1.25rem;margin:1.8rem 0 .6rem}
+.doc h3{font-size:1.02rem;margin:1.2rem 0 .4rem}
+.doc table{border-collapse:collapse;width:100%;font-size:.92rem}
+.doc th,.doc td{text-align:left;border-bottom:1px solid var(--line);padding:.4rem .5rem;vertical-align:top}
+.doc th{color:var(--muted);font-weight:600}
+.sources{max-width:860px;margin:1.5rem auto 0;font-size:.9rem;color:var(--muted);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}.sources a{white-space:nowrap}.sources a.current{color:var(--ink);font-weight:600;text-decoration:none}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem;border-top:1px solid var(--line)}
+.sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body data-source="travis">
+<header>
+  <h1>Travis CI → GitHub Actions <span>converter</span></h1>
+  <div class="actions">
+    <select id="example" aria-label="Load an example">
+      <option value="">Load an example…</option>
+      <option value="travis.yml">Node matrix, services, stages, npm deploy</option>
+    </select>
+    <button id="copy">Copy YAML</button>
+    <button id="download" class="primary">Download workflow.yml</button>
+  </div>
+</header>
+<main>
+  <div class="opts">
+
+    <label>Default runner
+      <select id="runner">
+        <option>ubuntu-latest</option><option>ubuntu-24.04</option><option>ubuntu-22.04</option><option>windows-latest</option><option>macos-latest</option><option>self-hosted</option>
+      </select>
+    </label>
+    <label>Workflow name <input type="text" id="wfname" placeholder="CI" size="12"></label>
+    <label><input type="checkbox" id="checkout" checked> Add actions/checkout</label>
+    <span>Everything runs in your browser. Nothing is uploaded.</span>
+  </div>
+  <div class="grid">
+    <div class="pane">
+      <div class="bar"><span>.travis.yml</span><span id="inmeta"></span></div>
+      <textarea id="in" spellcheck="false" aria-label="Jenkinsfile input" placeholder="language: node_js&#10;node_js:&#10;  - 18&#10;  - 20&#10;script:&#10;  - npm test"></textarea>
+    </div>
+    <div class="pane">
+      <div class="bar"><span>.github/workflows/ci.yml</span><span id="outmeta"></span></div>
+      <pre class="out" id="out" aria-live="polite"></pre>
+    </div>
+  </div>
+  <section class="notes" id="notes" hidden><h2 id="notes-title">Review before you commit</h2><ul id="notes-list"></ul></section>
+
+  <section class="support">
+    <p><strong>Useful?</strong> This tool is free and has no ads. If it saved you an afternoon, a small sponsorship keeps it maintained.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/sponsors/Huckcity" rel="noopener">Sponsor on GitHub</a>
+      <a class="btn" href="https://github.com/Huckcity/jenkins-to-actions" rel="noopener">Source on GitHub</a>
+      <a class="btn" href="mailto:adam.p.gibbons@gmail.com?subject=Jenkins%20to%20GitHub%20Actions%20migration">Migrating a whole Jenkins estate? Email me</a>
+    </div>
+  </section>
+
+  <nav class="sources" aria-label="Other converters"><span>Convert from:</span><a href="/">Jenkinsfile</a><span aria-hidden="true">·</span><a href="/gitlab-ci-to-github-actions/">GitLab CI</a><span aria-hidden="true">·</span><a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a><span aria-hidden="true">·</span><a href="/circleci-to-github-actions/">CircleCI</a><span aria-hidden="true">·</span><a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a><span aria-hidden="true">·</span><a class="current" aria-current="page" href="/travis-ci-to-github-actions/">Travis CI</a></nav>
+  <article class="doc">
+    <h2>What this converter does</h2>
+    <p>Paste a <code>.travis.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. The implicit build matrix (<code>os</code> × language versions × <code>env</code>) becomes <code>strategy.matrix</code>, <code>jobs.include</code> entries become their own jobs, and build stages become sequential groups. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>Anything without a clean equivalent becomes a <code>TODO</code> step that fails loudly with the original quoted.</p>
+
+    <h2>How Travis CI concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>Travis CI</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>language:</code> + version list</td><td><code>actions/setup-*</code> in a matrix</td><td>node_js, python, ruby, go, java, php, rust, elixir, dart, csharp, haskell, perl, scala, c/cpp.</td></tr>
+        <tr><td><code>os:</code> / <code>dist:</code></td><td><code>runs-on</code> matrix</td><td>jammy → ubuntu-22.04, osx → macos-latest, windows → windows-latest.</td></tr>
+        <tr><td><code>env:</code> matrix / <code>global</code></td><td><code>strategy.matrix</code> / <code>env:</code></td><td><code>secure:</code> values become notes to create secrets.</td></tr>
+        <tr><td><code>jobs.include</code> / <code>exclude</code> / <code>allow_failures</code> / <code>fast_finish</code></td><td>extra jobs, removed legs, <code>continue-on-error</code>, <code>fail-fast</code></td><td></td></tr>
+        <tr><td><code>stages:</code></td><td>job groups chained with <code>needs</code></td><td>Stage <code>if:</code> conditions applied.</td></tr>
+        <tr><td><code>before_install</code>, <code>install</code>, <code>before_script</code>, <code>script</code></td><td>steps in order</td><td>Language defaults emitted when <code>install</code>/<code>script</code> are missing.</td></tr>
+        <tr><td><code>after_success</code> / <code>after_failure</code> / <code>after_script</code></td><td>steps with <code>if: success()</code> / <code>failure()</code> / <code>always()</code></td><td></td></tr>
+        <tr><td><code>services:</code> (postgresql, mysql, redis, mongodb …)</td><td><code>services:</code> containers</td><td>Linux jobs only; default ports published.</td></tr>
+        <tr><td><code>addons: apt / homebrew / snaps / sonarcloud</code></td><td>install steps or actions</td><td>Chrome and Firefox are preinstalled.</td></tr>
+        <tr><td><code>cache:</code></td><td><code>actions/cache</code></td><td>Presets and <code>directories</code>.</td></tr>
+        <tr><td><code>branches: only / except</code></td><td><code>on.push.branches</code></td><td>Regexes approximated as globs.</td></tr>
+        <tr><td><code>if:</code> conditions</td><td><code>if:</code></td><td><code>branch</code>, <code>tag IS present</code>, <code>type</code>, <code>env()</code>, <code>repo</code>, <code>fork</code>, AND/OR/NOT.</td></tr>
+        <tr><td><code>deploy:</code> pages / npm / releases / pypi / rubygems / heroku / s3 / firebase / script</td><td>matching actions or <code>run:</code></td><td>Other providers become TODOs.</td></tr>
+        <tr><td><code>$TRAVIS_BRANCH</code>, <code>$TRAVIS_TAG</code>, <code>$TRAVIS_OS_NAME</code> …</td><td><code>env:</code> shim</td><td>Used variables are defined from the <code>github</code> context.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>Encrypted variables</strong> cannot be decrypted; recreate each as a repository secret.</li>
+      <li><strong>Database credentials</strong> differ: Travis services used passwordless defaults, the containers here allow empty passwords or trust auth. Check <code>env</code>.</li>
+      <li><strong>Deploy providers</strong> need <code>permissions:</code> (<code>contents: write</code> for Pages and Releases).</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my file uploaded anywhere?</h3>
+    <p>No. The converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/travis.js" rel="noopener">travis.js on GitHub</a>.</p>
+    <h3>Can I run this from the command line?</h3>
+    <p>Yes: <code>npx jenkins-to-actions convert .travis.yml</code>.</p>
+
+  </article>
+</main>
+<footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>
+<script type="module" src="/app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c4095c97d0ac46a391f809b82400b69f"}'></script>
+</body>
+</html>

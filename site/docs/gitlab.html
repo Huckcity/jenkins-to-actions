@@ -1,0 +1,39 @@
+    <h2>What this converter does</h2>
+    <p>Paste a <code>.gitlab-ci.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. YAML anchors and <code>extends:</code> are resolved first, so hidden <code>.template</code> jobs work. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>The output is a starting point, not a finished migration. Anything without a clean equivalent becomes a <code>TODO</code> step that fails loudly, and the notes list the repository secrets and variables you need to create.</p>
+
+    <h2>How GitLab CI concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>GitLab CI</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>stages</code> + <code>stage:</code></td><td><code>needs:</code> on every job of the next stage</td><td>Same ordering; <code>needs: []</code> starts immediately.</td></tr>
+        <tr><td><code>needs:</code></td><td><code>needs:</code></td><td>Jobs that are needed and have artifacts get a <code>download-artifact</code> step.</td></tr>
+        <tr><td><code>image:</code></td><td><code>container:</code></td><td>Linux runners only. <code>docker:</code> images are flagged: run Docker on the runner instead.</td></tr>
+        <tr><td><code>services:</code></td><td><code>services:</code></td><td><code>alias</code> becomes the service name; <code>docker:dind</code> is dropped.</td></tr>
+        <tr><td><code>rules: if:</code></td><td><code>if:</code></td><td><code>$CI_COMMIT_BRANCH</code>, <code>$CI_PIPELINE_SOURCE</code>, <code>$CI_COMMIT_TAG</code> comparisons; <code>when: never</code> negates.</td></tr>
+        <tr><td><code>only:</code> / <code>except:</code></td><td><code>if:</code></td><td>Branch names, <code>tags</code>, <code>merge_requests</code>, regex patterns.</td></tr>
+        <tr><td><code>variables:</code></td><td><code>env:</code></td><td>Workflow-level and job-level; CI/CD settings variables must be recreated.</td></tr>
+        <tr><td><code>$CI_COMMIT_SHA</code>, <code>$CI_REGISTRY_IMAGE</code> …</td><td><code>env:</code> shim</td><td>Used <code>CI_*</code> variables are defined from the <code>github</code> context, so scripts stay unchanged.</td></tr>
+        <tr><td><code>artifacts: paths</code></td><td><code>actions/upload-artifact</code></td><td><code>expire_in</code> becomes <code>retention-days</code>; <code>reports: junit</code> becomes a test-report action.</td></tr>
+        <tr><td><code>cache:</code></td><td><code>actions/cache</code></td><td><code>key: files:</code> becomes <code>hashFiles()</code>.</td></tr>
+        <tr><td><code>parallel: N</code> / <code>parallel: matrix</code></td><td><code>strategy.matrix</code></td><td>Index matrix or variable matrix.</td></tr>
+        <tr><td><code>when: manual</code></td><td><code>environment: manual-approval</code></td><td>Add required reviewers to the environment.</td></tr>
+        <tr><td><code>environment:</code></td><td><code>environment:</code></td><td></td></tr>
+        <tr><td><code>allow_failure</code>, <code>timeout</code>, <code>resource_group</code></td><td><code>continue-on-error</code>, <code>timeout-minutes</code>, <code>concurrency</code></td><td></td></tr>
+        <tr><td><code>before_script</code> / <code>after_script</code></td><td>separate steps</td><td><code>after_script</code> runs with <code>if: always()</code>.</td></tr>
+        <tr><td><code>include:</code>, <code>trigger:</code>, <code>workflow: rules</code></td><td>notes / TODO</td><td>Included files are not fetched; downstream pipelines become <code>gh workflow run</code> or reusable workflows.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>Merge request pipelines.</strong> <code>$CI_PIPELINE_SOURCE == "merge_request_event"</code> becomes <code>github.event_name == 'pull_request'</code>, and <code>on.pull_request</code> is added.</li>
+      <li><strong>Container registry.</strong> <code>$CI_REGISTRY_IMAGE</code> points at <code>ghcr.io/owner/repo</code> with <code>GITHUB_TOKEN</code>; add <code>permissions: packages: write</code>.</li>
+      <li><strong>Jobs without an image</strong> run directly on the runner, where service containers need published <code>ports:</code>.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my pipeline uploaded anywhere?</h3>
+    <p>No. The page is static and the converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/gitlab.js" rel="noopener">gitlab.js on GitHub</a>.</p>
+    <h3>How does this compare with GitHub Actions Importer?</h3>
+    <p>Actions Importer is a CLI that connects to your GitLab instance and converts in bulk. This page is for one file at a time with nothing to install. The same converter is available as <code>npx jenkins-to-actions convert .gitlab-ci.yml</code>.</p>
