@@ -150,6 +150,14 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
       </tbody>
     </table>
 
+    <h2>Auditing a whole Jenkins server?</h2>
+    <p>The same converter ships as a command-line audit. Point it at a Jenkins server with a read-only API token and it inventories every job (pipelines, freestyle, Maven, matrix, multibranch), writes converted workflows for everything it can convert, estimates the effort per job and lists the secrets to create. Nothing leaves your machine.</p>
+    <pre class="out" style="min-height:0;white-space:pre-wrap">npx github:Huckcity/jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN
+
+# or from exported job configs, with no network access to Jenkins
+npx github:Huckcity/jenkins-to-actions audit --dir ./jenkins_home/jobs</pre>
+    <p>Output: <code>report.md</code> with a suggested migration order, <code>inventory.json</code>, and <code>workflows/*.yml</code>. See the <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a>.</p>
+
     <h2>Why one job per stage is the default</h2>
     <p>It keeps the shape of your pipeline visible in the Actions graph and lets parallel stages and per-stage agents map directly. The cost is that each job starts from a clean runner, so a <code>Build</code> job cannot see what <code>Checkout</code> produced. If your stages pass files to each other, either switch to the single-job layout (stages become named steps in one job) or add <code>upload-artifact</code>/<code>download-artifact</code> between the jobs. Both layouts are offered above; pick the one that needs fewer edits.</p>
 

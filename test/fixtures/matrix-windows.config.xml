@@ -1,0 +1,24 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<matrix-project plugin="matrix-project@832">
+  <description>Cross-platform smoke</description>
+  <scm class="hudson.plugins.git.GitSCM">
+    <userRemoteConfigs><hudson.plugins.git.UserRemoteConfig><url>https://github.com/acme/cli.git</url></hudson.plugins.git.UserRemoteConfig></userRemoteConfigs>
+    <branches><hudson.plugins.git.BranchSpec><name>*/main</name></hudson.plugins.git.BranchSpec></branches>
+  </scm>
+  <axes>
+    <hudson.matrix.LabelAxis><name>label</name><values><string>linux</string><string>windows</string></values></hudson.matrix.LabelAxis>
+    <hudson.matrix.TextAxis><name>GO</name><values><string>1.22</string><string>1.23</string></values></hudson.matrix.TextAxis>
+  </axes>
+  <builders>
+    <hudson.tasks.Shell><command>go version &amp;&amp; go test ./...</command></hudson.tasks.Shell>
+    <hudson.tasks.BatchFile><command>go version
+go test ./...</command></hudson.tasks.BatchFile>
+    <com.acme.jenkins.FancyPlugin><thing>x</thing></com.acme.jenkins.FancyPlugin>
+  </builders>
+  <publishers>
+    <htmlpublisher.HtmlPublisher plugin="htmlpublisher@1.36">
+      <reportTargets><htmlpublisher.HtmlPublisherTarget><reportName>Coverage</reportName><reportDir>coverage</reportDir></htmlpublisher.HtmlPublisherTarget></reportTargets>
+    </htmlpublisher.HtmlPublisher>
+  </publishers>
+  <executionStrategy class="hudson.matrix.DefaultMatrixExecutionStrategyImpl"><runSequentially>false</runSequentially></executionStrategy>
+</matrix-project>

@@ -1,0 +1,11 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1436">
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps@3908">
+    <scm class="hudson.plugins.git.GitSCM">
+      <userRemoteConfigs><hudson.plugins.git.UserRemoteConfig><url>https://github.com/acme/api.git</url><credentialsId>gh</credentialsId></hudson.plugins.git.UserRemoteConfig></userRemoteConfigs>
+      <branches><hudson.plugins.git.BranchSpec><name>*/main</name></hudson.plugins.git.BranchSpec></branches>
+    </scm>
+    <scriptPath>ci/Jenkinsfile</scriptPath>
+    <lightweight>true</lightweight>
+  </definition>
+</flow-definition>

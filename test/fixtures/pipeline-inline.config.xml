@@ -1,0 +1,14 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1436">
+  <description>Inline pipeline</description>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@3908">
+    <script>pipeline {
+  agent any
+  stages {
+    stage('Build') { steps { sh 'make' } }
+    stage('Test') { steps { sh 'make test' } }
+  }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+</flow-definition>

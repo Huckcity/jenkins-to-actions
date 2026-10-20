@@ -1,0 +1,3 @@
+FROM docker.io/jenkins/jenkins:lts-jdk21
+ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false"
+RUN jenkins-plugin-cli --plugins "workflow-aggregator git credentials-binding timestamper ws-cleanup junit matrix-project pipeline-stage-view envinject build-timeout copyartifact parameterized-trigger"

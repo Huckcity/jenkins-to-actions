@@ -1,22 +1,37 @@
 {
   "name": "jenkins-to-actions",
   "version": "1.0.0",
-  "description": "",
+  "description": "Jenkinsfile and Jenkins job config to GitHub Actions converter, with a whole-estate audit",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "node test/run.js",
+    "test": "node test/run.js && node --test test/*.test.js",
     "dev": "npx wrangler dev",
     "deploy": "npx wrangler deploy"
   },
-  "keywords": [],
+  "keywords": [
+    "jenkins",
+    "github-actions",
+    "migration",
+    "ci"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "yaml": "^2.8.1"
   },
   "type": "module",
-  "private": true
+  "private": true,
+  "bin": {
+    "jenkins-to-actions": "cli/index.js"
+  },
+  "files": [
+    "cli",
+    "public/convert.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": "github:Huckcity/jenkins-to-actions"
 }
