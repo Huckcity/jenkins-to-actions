@@ -7,13 +7,13 @@ Two ways to move off Jenkins:
 
 ```sh
 # Audit a server (read-only; an API token with Overall/Read + Job/Read is enough)
-npx github:Huckcity/jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN --out ./jenkins-migration
+npx jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN --out ./jenkins-migration
 
 # Or audit exported config.xml files / Jenkinsfiles without network access to Jenkins
-npx github:Huckcity/jenkins-to-actions audit --dir ./jenkins_home/jobs
+npx jenkins-to-actions audit --dir ./jenkins_home/jobs
 
 # Convert a single Jenkinsfile from the command line
-npx github:Huckcity/jenkins-to-actions convert Jenkinsfile > .github/workflows/ci.yml
+npx jenkins-to-actions convert Jenkinsfile > .github/workflows/ci.yml
 ```
 
 The audit writes `report.md` (summary, suggested order, plugin usage, secrets, per-job notes), `inventory.json` (machine-readable) and `workflows/*.yml`. Nothing is sent anywhere; the CLI only reads from your Jenkins.

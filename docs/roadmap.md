@@ -10,7 +10,7 @@ The bar for this project is "makes more than it costs to host", and hosting cost
 
 ## Next steps, in order
 
-- [ ] `npm login` and publish `jenkins-to-actions` so the command is `npx jenkins-to-actions` (currently `npx github:Huckcity/jenkins-to-actions`).
+- [ ] `npm login` and publish `jenkins-to-actions` so the command is `npx jenkins-to-actions` (currently `npx jenkins-to-actions`).
 - [ ] Web page: "Auditing a whole server?" section with the npx command (done in the same change as this file).
 - [ ] `--open-prs`: given a GitHub token, push each converted workflow to its repository on a branch and open a PR with the notes as the PR body. Turns the audit into a one-command first pass.
 - [ ] Shared-library analysis: fetch `vars/*.groovy` from the library repo, list each custom step, how many Jenkinsfiles use it, and generate a composite-action skeleton per step.
