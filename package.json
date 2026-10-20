@@ -17,13 +17,12 @@
     "migration",
     "ci"
   ],
-  "author": "",
+  "author": "Adam Gibbons",
   "license": "MIT",
   "devDependencies": {
     "yaml": "^2.8.1"
   },
   "type": "module",
-  "private": true,
   "bin": {
     "jenkins-to-actions": "cli/index.js"
   },
@@ -33,5 +32,13 @@
     "README.md",
     "LICENSE"
   ],
-  "repository": "github:Huckcity/jenkins-to-actions"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Huckcity/jenkins-to-actions.git"
+  },
+  "homepage": "https://jenkins-to-actions.adam-p-gibbons.workers.dev",
+  "bugs": "https://github.com/Huckcity/jenkins-to-actions/issues",
+  "engines": {
+    "node": ">=20"
+  }
 }
