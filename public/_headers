@@ -1,0 +1,11 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none'
+/app.js
+  Cache-Control: public, max-age=600
+/convert.js
+  Cache-Control: public, max-age=600
+/examples/*
+  Cache-Control: public, max-age=3600

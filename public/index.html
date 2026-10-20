@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jenkinsfile to GitHub Actions converter</title>
+<meta name="description" content="Paste a Jenkinsfile, get a GitHub Actions workflow. Converts declarative and scripted pipelines (stages, parallel, matrix, when, credentials, post) in your browser. Nothing is uploaded.">
+<link rel="canonical" href="https://jenkins-to-actions.adam-p-gibbons.workers.dev/">
+<meta property="og:title" content="Jenkinsfile → GitHub Actions converter">
+<meta property="og:description" content="Free, client-side Jenkins pipeline to GitHub Actions workflow converter with a list of everything it could not map.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d33833'/%3E%3Cpath d='M8 16h12M15 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1b1f24;--muted:#5b6470;--line:#d9dee5;--accent:#1f6feb;--accent-ink:#fff;--warn-bg:#fff6e0;--warn-line:#f0c36d;--code-bg:#0f1419;--code-ink:#e6edf3;--ok:#1a7f37}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--muted:#8b949e;--line:#30363d;--accent:#2f81f7;--warn-bg:#2b2111;--warn-line:#7a5a1e;--code-bg:#0a0d12;--code-ink:#e6edf3;--ok:#3fb950}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:1.1rem;margin:0;font-weight:650;letter-spacing:-.01em}
+header h1 span{color:var(--muted);font-weight:400}
+.actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+button,select,input[type=text]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.4rem .7rem}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:hover{border-color:var(--accent)}
+main{max-width:1400px;margin:0 auto;padding:1rem}
+.opts{display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;margin:0 0 .8rem;font-size:.92rem;color:var(--muted)}
+.opts label{display:flex;gap:.35rem;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.pane{display:flex;flex-direction:column;min-height:60vh}
+.pane .bar{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted);margin-bottom:.35rem}
+textarea,pre.out{flex:1;width:100%;min-height:55vh;margin:0;padding:.8rem;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);color:var(--code-ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;resize:vertical}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+pre.out .c{color:#8b949e}pre.out .k{color:#79c0ff}pre.out .s{color:#a5d6ff}pre.out .t{color:#ffa657}
+.notes{margin:1rem 0 0;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.8rem 1rem}
+.notes h2{font-size:.95rem;margin:0 0 .4rem}
+.notes ul{margin:0;padding-left:1.2rem}
+.notes li{margin:.25rem 0}
+.notes code,.doc code{background:rgba(127,127,127,.15);padding:.05em .3em;border-radius:4px;font-size:.9em}
+.notes.ok{background:transparent;border-color:var(--ok)}
+.support{margin:1.5rem 0;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.9rem 1rem}
+.support p{margin:0}
+.support .btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.support a.btn{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:.4rem .8rem;color:var(--ink);background:var(--bg)}
+.support a.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.doc{max-width:860px;margin:2rem auto 3rem;color:var(--ink)}
+.doc h2{font-size:1.25rem;margin:1.8rem 0 .6rem}
+.doc h3{font-size:1.02rem;margin:1.2rem 0 .4rem}
+.doc table{border-collapse:collapse;width:100%;font-size:.92rem}
+.doc th,.doc td{text-align:left;border-bottom:1px solid var(--line);padding:.4rem .5rem;vertical-align:top}
+.doc th{color:var(--muted);font-weight:600}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem;border-top:1px solid var(--line)}
+.sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Jenkinsfile → GitHub Actions <span>converter</span></h1>
+  <div class="actions">
+    <select id="example" aria-label="Load an example">
+      <option value="">Load an example…</option>
+      <option value="declarative">Declarative (Maven, Docker, params)</option>
+      <option value="parallel-matrix">Parallel stages + matrix</option>
+      <option value="scripted">Scripted (node/stage)</option>
+    </select>
+    <button id="copy">Copy YAML</button>
+    <button id="download" class="primary">Download workflow.yml</button>
+  </div>
+</header>
+<main>
+  <div class="opts">
+    <label>Layout
+      <select id="mode">
+        <option value="jobs">One job per stage</option>
+        <option value="single">Single job (stages become steps)</option>
+      </select>
+    </label>
+    <label>Default runner
+      <select id="runner">
+        <option>ubuntu-latest</option><option>ubuntu-24.04</option><option>ubuntu-22.04</option><option>windows-latest</option><option>macos-latest</option><option>self-hosted</option>
+      </select>
+    </label>
+    <label>Workflow name <input type="text" id="wfname" placeholder="CI" size="12"></label>
+    <label><input type="checkbox" id="checkout" checked> Add actions/checkout</label>
+    <span>Everything runs in your browser. Nothing is uploaded.</span>
+  </div>
+  <div class="grid">
+    <div class="pane">
+      <div class="bar"><span>Jenkinsfile</span><span id="inmeta"></span></div>
+      <textarea id="in" spellcheck="false" aria-label="Jenkinsfile input" placeholder="pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                sh 'make'
+            }
+        }
+    }
+}"></textarea>
+    </div>
+    <div class="pane">
+      <div class="bar"><span>.github/workflows/ci.yml</span><span id="outmeta"></span></div>
+      <pre class="out" id="out" aria-live="polite"></pre>
+    </div>
+  </div>
+  <section class="notes" id="notes" hidden><h2 id="notes-title">Review before you commit</h2><ul id="notes-list"></ul></section>
+
+  <section class="support">
+    <p><strong>Useful?</strong> This tool is free and has no ads. If it saved you an afternoon, a small sponsorship keeps it maintained.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/sponsors/Huckcity" rel="noopener">Sponsor on GitHub</a>
+      <a class="btn" href="mailto:adam.p.gibbons@gmail.com?subject=Jenkins%20to%20GitHub%20Actions%20migration">Migrating a whole Jenkins estate? Email me</a>
+    </div>
+  </section>
+
+  <article class="doc">
+    <h2>What this converter does</h2>
+    <p>Paste a <code>Jenkinsfile</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. It handles declarative pipelines (<code>pipeline { }</code>) and the common shape of scripted pipelines (<code>node { stage { } }</code>). Conversion runs entirely in your browser; your pipeline never leaves the page, which matters because Jenkinsfiles tend to contain internal hostnames and credential IDs.</p>
+    <p>The output is a starting point, not a finished migration. Every construct without a clean equivalent becomes a <code>TODO</code> step that fails loudly, so nothing silently disappears. The notes panel tells you which repository secrets to create.</p>
+
+    <h2>How Jenkins concepts map to GitHub Actions</h2>
+    <table>
+      <thead><tr><th>Jenkins</th><th>GitHub Actions</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>agent any</code> / <code>agent { label }</code></td><td><code>runs-on</code></td><td>Labels mentioning linux, windows or mac map to hosted runners; anything else becomes <code>[self-hosted, label]</code>.</td></tr>
+        <tr><td><code>agent { docker { image } }</code></td><td><code>container:</code></td><td>Linux runners only. The image needs a shell.</td></tr>
+        <tr><td><code>stage</code></td><td><code>job</code> (or a group of steps)</td><td>Jenkins stages share one workspace; jobs do not. Use artifacts or the single-job layout.</td></tr>
+        <tr><td><code>parallel { }</code></td><td>Sibling jobs with the same <code>needs</code></td><td>Next stage fans in with <code>needs: [a, b, c]</code>.</td></tr>
+        <tr><td><code>matrix { axes }</code></td><td><code>strategy.matrix</code></td><td><code>excludes</code> become <code>matrix.exclude</code>.</td></tr>
+        <tr><td><code>when { branch 'main' }</code></td><td><code>if: github.ref == 'refs/heads/main'</code></td><td>Globs become <code>startsWith</code>/<code>contains</code>.</td></tr>
+        <tr><td><code>environment { }</code></td><td><code>env:</code></td><td><code>credentials('id')</code> becomes <code>${{ secrets.ID }}</code>.</td></tr>
+        <tr><td><code>parameters { }</code></td><td><code>workflow_dispatch.inputs</code></td><td><code>params.X</code> becomes <code>${{ inputs.X }}</code>.</td></tr>
+        <tr><td><code>triggers { cron }</code></td><td><code>on.schedule</code></td><td>Jenkins <code>H</code> has no equivalent; GitHub schedules run in UTC.</td></tr>
+        <tr><td><code>options { timeout }</code></td><td><code>timeout-minutes</code></td><td></td></tr>
+        <tr><td><code>disableConcurrentBuilds()</code></td><td><code>concurrency:</code></td><td><code>abortPrevious</code> becomes <code>cancel-in-progress</code>.</td></tr>
+        <tr><td><code>sh</code> / <code>bat</code> / <code>powershell</code></td><td><code>run:</code></td><td>With <code>shell: cmd</code> or <code>pwsh</code> where needed.</td></tr>
+        <tr><td><code>withCredentials</code></td><td><code>env:</code> from <code>secrets.*</code></td><td>Username/password pairs become two secrets.</td></tr>
+        <tr><td><code>archiveArtifacts</code>, <code>stash</code>/<code>unstash</code></td><td><code>actions/upload-artifact</code> / <code>download-artifact</code></td><td></td></tr>
+        <tr><td><code>junit</code></td><td><code>mikepenz/action-junit-report</code></td><td>Needs <code>permissions: checks: write</code>.</td></tr>
+        <tr><td><code>retry(n)</code></td><td><code>nick-fields/retry</code></td><td></td></tr>
+        <tr><td><code>timeout(...) { }</code></td><td>step <code>timeout-minutes</code></td><td></td></tr>
+        <tr><td><code>dir('x') { }</code></td><td><code>working-directory</code></td><td>Actions (<code>uses:</code>) ignore it; pass a path input instead.</td></tr>
+        <tr><td><code>post { always / success / failure }</code></td><td>steps with <code>if: always()</code> etc.</td><td>Pipeline-level <code>post</code> becomes a final job that <code>needs</code> everything.</td></tr>
+        <tr><td><code>input</code></td><td>Protected <code>environment:</code></td><td>Required reviewers replace manual approval steps.</td></tr>
+        <tr><td><code>${env.BUILD_NUMBER}</code>, <code>${BRANCH_NAME}</code> …</td><td><code>github.run_number</code>, <code>github.ref_name</code> …</td><td>Twenty-odd built-in variables are mapped.</td></tr>
+        <tr><td><code>script { }</code>, shared libraries, plugins</td><td><code>TODO</code> step</td><td>Simple <code>if</code>/<code>try</code>/<code>def x = sh(returnStdout)</code> are converted; the rest is left for you, verbatim, in a comment.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Why one job per stage is the default</h2>
+    <p>It keeps the shape of your pipeline visible in the Actions graph and lets parallel stages and per-stage agents map directly. The cost is that each job starts from a clean runner, so a <code>Build</code> job cannot see what <code>Checkout</code> produced. If your stages pass files to each other, either switch to the single-job layout (stages become named steps in one job) or add <code>upload-artifact</code>/<code>download-artifact</code> between the jobs. Both layouts are offered above; pick the one that needs fewer edits.</p>
+
+    <h2>Things that never convert automatically</h2>
+    <ul>
+      <li><strong>Shared library calls</strong> (<code>@Library</code>, custom steps). You will see them as TODO steps with the original call quoted.</li>
+      <li><strong>Groovy logic</strong> beyond simple branches: loops, maps, string manipulation. Move it into a script in your repository and call that from a <code>run</code> step.</li>
+      <li><strong>Plugin steps</strong> such as <code>emailext</code>, <code>slackSend</code>, <code>withSonarQubeEnv</code>. The notes name the Marketplace action that usually replaces each one.</li>
+      <li><strong>UNSTABLE builds.</strong> Actions has success, failure, cancelled and skipped; there is no yellow.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my Jenkinsfile uploaded anywhere?</h3>
+    <p>No. The page is static and the converter is a single JavaScript file that runs in your tab. There is no backend to send anything to. You can check the network tab, or read <a href="/convert.js">convert.js</a>.</p>
+    <h3>How does this compare with GitHub's Actions Importer?</h3>
+    <p>GitHub Actions Importer is a CLI that connects to your Jenkins server and converts pipelines in bulk, including plugin configuration it can read from the server. It is the right tool for a large estate. This page is for the moment you have one Jenkinsfile in front of you and want a workflow to start from without installing anything or connecting a server.</p>
+    <h3>The output has errors in it.</h3>
+    <p>Every generated workflow is checked against <a href="https://github.com/rhysd/actionlint" rel="noopener">actionlint</a> in this tool's test suite, but your Jenkinsfile may hit a shape the parser does not understand. <a href="mailto:adam.p.gibbons@gmail.com?subject=Jenkinsfile%20converter%20bug">Email the Jenkinsfile</a> (redact what you need to) and it will become a test case.</p>
+  </article>
+</main>
+<footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies, no tracking scripts.</footer>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

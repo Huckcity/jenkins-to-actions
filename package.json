@@ -1,0 +1,22 @@
+{
+  "name": "jenkins-to-actions",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node test/run.js",
+    "dev": "npx wrangler dev",
+    "deploy": "npx wrangler deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "yaml": "^2.8.1"
+  },
+  "type": "module",
+  "private": true
+}
