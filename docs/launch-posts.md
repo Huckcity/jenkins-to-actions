@@ -1,0 +1,28 @@
+# Launch posts (drafted 2026-10-20)
+
+## Show HN (blocked: huckcity account created 2026-10-20, karma 1; HN is restricting Show HNs from new accounts)
+
+Title: Show HN: Jenkinsfile to GitHub Actions converter that runs in your browser
+URL: https://jenkins-to-actions.adam-p-gibbons.workers.dev/
+
+I run CI for a living (CloudBees/Jenkins and GitHub Actions). GitHub's Actions Importer is the right tool for bulk migrations, but it needs a connection to the Jenkins server. I wanted something for the moment you have one Jenkinsfile in front of you and want a workflow to start from.
+
+This parses the Groovy DSL (declarative pipelines, and the common node/stage shape of scripted ones) into a tree and emits a workflow: stages become jobs with needs chains (or steps in one job, your choice), parallel becomes sibling jobs, matrix becomes strategy.matrix, when becomes if:, credentials become secrets, params become workflow_dispatch inputs, and ~20 Jenkins env vars are mapped. Anything it can't map becomes a TODO step that fails loudly with the original code quoted in a comment, so nothing silently disappears. A notes panel lists the secrets to create and the Marketplace action that usually replaces each plugin step.
+
+It runs entirely client-side; there's no backend, which matters because Jenkinsfiles tend to be full of internal hostnames. Every fixture in the test suite is checked with actionlint. MIT, source here: https://github.com/Huckcity/jenkins-to-actions
+
+What it won't do: shared libraries, arbitrary Groovy, most plugin steps. I'd like to hear about Jenkinsfiles that break it.
+
+## r/devops (check the sidebar: self-promo is usually allowed if you engage in the thread)
+
+Title: I built a client-side Jenkinsfile → GitHub Actions converter (free, no upload)
+
+Same body as above, minus the first sentence's "Show HN" framing.
+
+## LinkedIn
+
+Migrating pipelines off Jenkins? I built a small free tool: paste a Jenkinsfile, get a GitHub Actions workflow plus a list of everything that didn't map cleanly. Runs entirely in your browser, nothing uploaded. Declarative and scripted pipelines, parallel, matrix, when, credentials, post blocks. Anything it can't convert becomes a loud TODO rather than silently vanishing.
+
+https://jenkins-to-actions.adam-p-gibbons.workers.dev
+
+Source (MIT): https://github.com/Huckcity/jenkins-to-actions
