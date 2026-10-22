@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 const doc = (name) => readFileSync(new URL(`./docs/${name}.html`, import.meta.url), 'utf8');
 
-export const SITE = 'https://jenkins-to-actions.adam-p-gibbons.workers.dev';
+export const SITE = 'https://ci2actions.dev';
 
 export const PAGES = [
   {

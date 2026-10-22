@@ -4,12 +4,12 @@ Move to GitHub Actions from **Jenkins, GitLab CI, Azure Pipelines, CircleCI, Bit
 
 | Source | Web page | CLI |
 |---|---|---|
-| Jenkinsfile | https://jenkins-to-actions.adam-p-gibbons.workers.dev/ | `npx jenkins-to-actions convert Jenkinsfile` |
-| GitLab CI | https://jenkins-to-actions.adam-p-gibbons.workers.dev/gitlab-ci-to-github-actions/ | `npx jenkins-to-actions convert .gitlab-ci.yml` |
-| Azure Pipelines | https://jenkins-to-actions.adam-p-gibbons.workers.dev/azure-pipelines-to-github-actions/ | `npx jenkins-to-actions convert azure-pipelines.yml` |
-| CircleCI | https://jenkins-to-actions.adam-p-gibbons.workers.dev/circleci-to-github-actions/ | `npx jenkins-to-actions convert .circleci/config.yml` |
-| Bitbucket Pipelines | https://jenkins-to-actions.adam-p-gibbons.workers.dev/bitbucket-pipelines-to-github-actions/ | `npx jenkins-to-actions convert bitbucket-pipelines.yml` |
-| Travis CI | https://jenkins-to-actions.adam-p-gibbons.workers.dev/travis-ci-to-github-actions/ | `npx jenkins-to-actions convert .travis.yml` |
+| Jenkinsfile | https://ci2actions.dev/ | `npx jenkins-to-actions convert Jenkinsfile` |
+| GitLab CI | https://ci2actions.dev/gitlab-ci-to-github-actions/ | `npx jenkins-to-actions convert .gitlab-ci.yml` |
+| Azure Pipelines | https://ci2actions.dev/azure-pipelines-to-github-actions/ | `npx jenkins-to-actions convert azure-pipelines.yml` |
+| CircleCI | https://ci2actions.dev/circleci-to-github-actions/ | `npx jenkins-to-actions convert .circleci/config.yml` |
+| Bitbucket Pipelines | https://ci2actions.dev/bitbucket-pipelines-to-github-actions/ | `npx jenkins-to-actions convert bitbucket-pipelines.yml` |
+| Travis CI | https://ci2actions.dev/travis-ci-to-github-actions/ | `npx jenkins-to-actions convert .travis.yml` |
 
 The source system is detected from the file name or content; force it with `--from gitlab|azure|circleci|bitbucket|travis|jenkins`.
 

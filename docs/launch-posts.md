@@ -3,7 +3,7 @@
 ## Show HN (blocked: huckcity account created 2026-10-20, karma 1; HN is restricting Show HNs from new accounts)
 
 Title: Show HN: Jenkinsfile to GitHub Actions converter that runs in your browser
-URL: https://jenkins-to-actions.adam-p-gibbons.workers.dev/
+URL: https://ci2actions.dev/
 
 I run CI for a living (CloudBees/Jenkins and GitHub Actions). GitHub's Actions Importer is the right tool for bulk migrations, but it needs a connection to the Jenkins server. I wanted something for the moment you have one Jenkinsfile in front of you and want a workflow to start from.
 
@@ -23,7 +23,7 @@ Same body as above, minus the first sentence's "Show HN" framing.
 
 Migrating pipelines off Jenkins? I built a small free tool: paste a Jenkinsfile, get a GitHub Actions workflow plus a list of everything that didn't map cleanly. Runs entirely in your browser, nothing uploaded. Declarative and scripted pipelines, parallel, matrix, when, credentials, post blocks. Anything it can't convert becomes a loud TODO rather than silently vanishing.
 
-https://jenkins-to-actions.adam-p-gibbons.workers.dev
+https://ci2actions.dev
 
 Source (MIT): https://github.com/Huckcity/jenkins-to-actions
 

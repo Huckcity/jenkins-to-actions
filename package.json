@@ -41,7 +41,7 @@
     "type": "git",
     "url": "git+https://github.com/Huckcity/jenkins-to-actions.git"
   },
-  "homepage": "https://jenkins-to-actions.adam-p-gibbons.workers.dev",
+  "homepage": "https://ci2actions.dev",
   "bugs": "https://github.com/Huckcity/jenkins-to-actions/issues",
   "engines": {
     "node": ">=20"
