@@ -19,7 +19,7 @@ for (const p of PAGES) {
   console.log('wrote', out);
 }
 // Static pages share the template's <head> and CSS; their body comes from site/<slug>.html.
-const head = tpl.slice(0, tpl.indexOf('<body>') + '<body>'.length);
+const bodyTag = /<body[^>]*>/.exec(tpl); const head = tpl.slice(0, bodyTag.index) + '<body>';
 const tail = tpl.slice(tpl.indexOf('<footer>'));
 for (const p of STATIC_PAGES) {
   const body = readFileSync(new URL(`./${p.slug}.html`, import.meta.url), 'utf8');
