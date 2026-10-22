@@ -10,7 +10,6 @@ Notes from the converter:
 - `podTemplate` (Kubernetes plugin) has no equivalent: the job runs on a hosted runner, and the container images below were mapped to `container:` or noted. Use actions-runner-controller if you still want pods on your own cluster.
 - `pollSCM` became `on: push`; GitHub pushes events, so polling is unnecessary. Adjust the branch filter.
 - `currentBuild.result = 'FAILED'` dropped (Jenkins build metadata).
-- Groovy condition `if (needToDeploy())` could not be translated; a placeholder `true` was emitted on the affected steps.
 - `sshagent` became `webfactory/ssh-agent`; store the private key as a secret.
 - `dir('www')` wraps a step that uses an action; actions ignore `working-directory`, so pass the path as an input instead.
 - Steps ran in pod container `jekyll`; the job now runs in `container: docker.io/jekyll/jekyll:4.1.0`. Container jobs need a Linux runner and the image must have a shell.
@@ -101,7 +100,7 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.GITHUB_BOT_SSH }}
-        # TODO: if (needToDeploy())
+        if: github.ref_name == 'master'
       - name: 'Checkout website: git config --global user.email "${PROJECT_NAME}-bot@eclip…'
         run: |
           git config --global user.email "${PROJECT_NAME}-bot@eclipse.org"
@@ -109,14 +108,14 @@ jobs:
           git clone git@github.com:eclipse/${PROJECT_NAME}-website.git .
           git checkout ${BRANCH_NAME}
         working-directory: www
-        # TODO: if (needToDeploy())
+        if: github.ref_name == 'master'
       - name: 'Copy content: rm -rf www/* && cp -Rvf build/homepage/_site/* www/'
         run: 'rm -rf www/* && cp -Rvf build/homepage/_site/* www/'
-        # TODO: if (needToDeploy())
+        if: github.ref_name == 'master'
       - name: 'Copy content: git checkout -- charts/'
         run: git checkout -- charts/
         working-directory: www
-        # TODO: if (needToDeploy())
+        if: github.ref_name == 'master'
       - name: 'Copy content: mkdir build/helm-add'
         run: |
           mkdir build/helm-add
@@ -127,20 +126,18 @@ jobs:
               touch build/perform-merge
             fi
           done
-        # TODO: if (needToDeploy())
+        if: github.ref_name == 'master'
       - name: 'Rebuild helm Index: ${WORKSPACE}/helm repo index --merge www/charts/index.yam…'
         run: ${WORKSPACE}/helm repo index --merge www/charts/index.yaml build/helm-add --url https://eclipse.dev/packages/charts
-        # TODO: if (needToDeploy())
-        if: (hashFiles('build/perform-merge') != '')
+        if: (github.ref_name == 'master') && (hashFiles('build/perform-merge') != '')
       - name: 'Rebuild helm Index: cp -v build/helm-add/* www/charts/'
         run: 'cp -v build/helm-add/* www/charts/'
-        # TODO: if (needToDeploy())
-        if: (hashFiles('build/perform-merge') != '')
+        if: (github.ref_name == 'master') && (hashFiles('build/perform-merge') != '')
       - name: 'Commit and push: Start ssh-agent'
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.GITHUB_BOT_SSH }}
-        # TODO: if (needToDeploy())
+        if: github.ref_name == 'master'
       - name: 'Commit and push: git add -A'
         run: |
           git add -A
@@ -153,5 +150,5 @@ jobs:
             echo "No changes have been detected since last build, nothing to publish"
           fi
         working-directory: www
-        # TODO: if (needToDeploy())
+        if: github.ref_name == 'master'
 ```

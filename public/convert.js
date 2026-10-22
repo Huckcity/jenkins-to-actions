@@ -1013,6 +1013,17 @@ function guessExpression(raw, ctx) {
   const s = raw.trim();
   let m;
   if ((m = /^return\s+(.*)$/.exec(s))) return guessExpression(m[1], ctx);
+  // A call to a one-line function defined in this Jenkinsfile: `def needToDeploy() { return BRANCH_NAME == 'master' }`
+  if ((m = /^(!?)([A-Za-z_]\w*)\(\)$/.exec(s)) && ctx.functions && ctx.functions[m[2]] && (ctx.guessDepth || 0) < 4) {
+    const fn = ctx.functions[m[2]];
+    const body = fn.block.filter((st) => !(st.kind === 'raw' && !st.raw.trim()));
+    if (body.length === 1 && body[0].kind === 'raw' && /^return\s+/.test(body[0].raw.trim())) {
+      ctx.guessDepth = (ctx.guessDepth || 0) + 1;
+      const inner = guessExpression(body[0].raw.trim(), ctx);
+      ctx.guessDepth--;
+      if (inner) return m[1] ? `!(${inner})` : inner;
+    }
+  }
   if ((m = /^(?:env\.)?BRANCH_NAME\s*==\s*['"]([^'"]+)['"]$/.exec(s))) return `github.ref_name == '${m[1]}'`;
   if ((m = /^(?:env\.)?BRANCH_NAME\s*!=\s*['"]([^'"]+)['"]$/.exec(s))) return `github.ref_name != '${m[1]}'`;
   if ((m = /^(?:env\.)?BRANCH_NAME\s*(==~|=~)\s*\/?(.*?)\/?$/.exec(s))) { ctx.note(`Regex branch match \`${s}\` approximated with startsWith/contains; check it.`); const p = m[2].replace(/^\^|\$$/g, '').replace(/\\\//g, '/').replace(/\.\*$/, ''); return `startsWith(github.ref_name, '${p}')`; }
