@@ -1,6 +1,6 @@
 // Generate public/index.html and public/<slug>/index.html from site/template.html + site/sources.js
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { PAGES, SITE } from './sources.js';
+import { PAGES, SITE, STATIC_PAGES } from './sources.js';
 const tpl = readFileSync(new URL('./template.html', import.meta.url), 'utf8');
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 for (const p of PAGES) {
@@ -18,5 +18,18 @@ for (const p of PAGES) {
   writeFileSync(out, html);
   console.log('wrote', out);
 }
-writeFileSync('public/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${PAGES.map((p) => `  <url><loc>${SITE}${p.path}</loc></url>`).join('\n')}\n</urlset>\n`);
+// Static pages share the template's <head> and CSS; their body comes from site/<slug>.html.
+const head = tpl.slice(0, tpl.indexOf('<body>') + '<body>'.length);
+const tail = tpl.slice(tpl.indexOf('<footer>'));
+for (const p of STATIC_PAGES) {
+  const body = readFileSync(new URL(`./${p.slug}.html`, import.meta.url), 'utf8');
+  const html = head.replace(/\{\{TITLE\}\}/g, esc(p.title)).replace(/\{\{OG_TITLE\}\}/g, esc(p.ogTitle)).replace(/\{\{DESCRIPTION\}\}/g, esc(p.description)).replace(/\{\{PATH\}\}/g, p.path).replace(/\{\{SOURCE\}\}/g, '')
+    + `\n<header><h1><a href="/" style="color:inherit;text-decoration:none">ci2actions.dev</a> <span>CI → GitHub Actions</span></h1><nav class="sources" aria-label="Converters"><span>Convert from:</span>${PAGES.map((q) => `<a href="${q.path}">${q.h1}</a>`).join('<span aria-hidden="true">·</span>')}</nav></header>\n`
+    + body + tail.replace('<script type="module" src="/app.js"></script>\n', '');
+  mkdirSync(`public/${p.slug}`, { recursive: true });
+  writeFileSync(`public/${p.slug}/index.html`, html);
+  console.log('wrote', `public/${p.slug}/index.html`);
+}
+const ALL = [...PAGES, ...STATIC_PAGES];
+writeFileSync('public/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${ALL.map((p) => `  <url><loc>${SITE}${p.path}</loc></url>`).join('\n')}\n</urlset>\n`);
 writeFileSync('public/robots.txt', `User-agent: *\nAllow: /\nSitemap: ${SITE}/sitemap.xml\n`);

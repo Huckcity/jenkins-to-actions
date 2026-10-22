@@ -85,4 +85,4 @@ npm run deploy  # build + Cloudflare Workers static assets
 
 ## Support
 
-MIT. If it saved you time, [sponsor](https://github.com/sponsors/Huckcity). For a whole-estate migration done for you, including shared libraries and cut-over: adam.p.gibbons@gmail.com.
+MIT. If it saved you time, [sponsor](https://github.com/sponsors/Huckcity). For a whole-estate migration done for you, including shared libraries and cut-over, see the [fixed-fee audit and migration service](https://ci2actions.dev/migration/).

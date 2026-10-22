@@ -55,6 +55,24 @@ pre.out .c{color:#8b949e}pre.out .k{color:#79c0ff}pre.out .s{color:#a5d6ff}pre.o
 .sources{max-width:860px;margin:1.5rem auto 0;font-size:.9rem;color:var(--muted);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}.sources a{white-space:nowrap}.sources a.current{color:var(--ink);font-weight:600;text-decoration:none}
 footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem;border-top:1px solid var(--line)}
 .sr{position:absolute;left:-9999px}
+.offer{max-width:1100px}
+.offer .hero{text-align:center;margin:1.5rem auto 2rem;max-width:760px}
+.offer .hero h1{font-size:2rem;line-height:1.15;letter-spacing:-.02em;margin:0 0 .8rem}
+.offer .lede{color:var(--muted);font-size:1.08rem;margin:0}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;align-items:stretch}
+.tier{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.2rem 1.3rem;display:flex;flex-direction:column;min-width:0}
+.tier.featured{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,111,235,.12)}
+.tier h2{margin:0 0 .2rem;font-size:1.15rem}
+.tier .price{font-size:1.6rem;font-weight:700;margin:.2rem 0 .8rem;letter-spacing:-.02em}
+.tier .price span{font-size:.9rem;font-weight:500;color:var(--muted)}
+.tier ul{padding-left:1.1rem;margin:.4rem 0 1rem}
+.tier li{margin:.35rem 0}
+.tier p{margin:.3rem 0}
+.tier .small{color:var(--muted);font-size:.9rem}
+.tier .btn{margin-top:auto;text-align:center}
+.offer .doc ol li{margin:.5rem 0}
+.header-link{color:var(--muted);font-size:.9rem;text-decoration:none;border:1px solid var(--line);padding:.3rem .6rem;border-radius:999px}
+.header-link:hover{border-color:var(--accent);color:var(--accent)}
 </style>
 </head>
 <body data-source="circleci">
@@ -67,6 +85,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
     </select>
     <button id="copy">Copy YAML</button>
     <button id="download" class="primary">Download workflow.yml</button>
+    <a class="header-link" href="/migration/">Whole estate? Fixed-fee audit</a>
   </div>
 </header>
 <main>
@@ -98,7 +117,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
     <div class="btns">
       <a class="btn primary" href="https://github.com/sponsors/Huckcity" rel="noopener">Sponsor on GitHub</a>
       <a class="btn" href="https://github.com/Huckcity/jenkins-to-actions" rel="noopener">Source on GitHub</a>
-      <a class="btn" href="mailto:adam.p.gibbons@gmail.com?subject=Jenkins%20to%20GitHub%20Actions%20migration">Migrating a whole Jenkins estate? Email me</a>
+      <a class="btn" href="/migration/">Migrating a whole estate? Fixed-fee audit</a>
     </div>
   </section>
 
@@ -153,7 +172,7 @@ GITLAB_TOKEN=… npx jenkins-to-actions audit --gitlab-group acme/platform
 AZURE_DEVOPS_TOKEN=… npx jenkins-to-actions audit --azure-org acme
 npx jenkins-to-actions audit --bitbucket-workspace acme --user me --token APP_PASSWORD
 npx jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN</pre>
-    <p>See a real result: <a href="https://github.com/Huckcity/ci-migration-demo/pull/1" rel="noopener">this pull request</a> was opened by one command on a repository holding one config per system. The <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a> has the details.</p>
+    <p>See a real result: <a href="https://github.com/Huckcity/ci-migration-demo/pull/1" rel="noopener">this pull request</a> was opened by one command on a repository holding one config per system. The <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a> has the details, and <a href="/migration/">the migration page</a> describes the fixed-fee audit if you would rather have it done for you.</p>
   </article>
 </main>
 <footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>

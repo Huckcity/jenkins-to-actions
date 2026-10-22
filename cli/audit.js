@@ -285,7 +285,7 @@ function buildReport(estate, recs) {
     if (r.description) L.push(`> ${r.description.split('\n')[0]}`, '');
     if (r.notes.length) L.push(r.notes.map((n) => `- ${n}`).join('\n'), '');
   }
-  L.push('---', '', 'Need this done for the whole estate, including the shared libraries and the cut-over plan? The author does Jenkins → GitHub Actions migrations as contract work: adam.p.gibbons@gmail.com. If the tool alone saved you time, [sponsorship](https://github.com/sponsors/Huckcity) keeps it maintained.', '');
+  L.push('---', '', 'Need this done for the whole estate, including the shared libraries and the cut-over plan? The author offers a fixed-fee estate audit and done-for-you migrations: https://ci2actions.dev/migration/ (adam.p.gibbons@gmail.com). If the tool alone saved you time, [sponsorship](https://github.com/sponsors/Huckcity) keeps it maintained.', '');
   return L.join('\n');
 }
 const TYPE_LABEL = { gitlab: 'GitLab CI', azure: 'Azure Pipelines (YAML)', 'azure-classic': 'Azure Pipelines (classic)', circleci: 'CircleCI', bitbucket: 'Bitbucket Pipelines', travis: 'Travis CI', freestyle: 'Freestyle', maven: 'Maven project', matrix: 'Matrix (multi-configuration)', 'pipeline-declarative': 'Pipeline (declarative, inline)', 'pipeline-scripted': 'Pipeline (scripted, inline)', 'pipeline-scm': 'Pipeline (Jenkinsfile from SCM)', multibranch: 'Multibranch pipeline', folder: 'Folder', unknown: 'Unknown', error: 'Unreadable', multijob: 'MultiJob', external: 'External job' };

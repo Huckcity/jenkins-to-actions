@@ -1,0 +1,65 @@
+<main class="offer">
+  <section class="hero">
+    <h1>Move your CI to GitHub Actions without the rewrite marathon</h1>
+    <p class="lede">Jenkins, GitLab CI, Azure Pipelines, CircleCI, Bitbucket Pipelines or Travis: the converters on this site do the mechanical part for free. When you have fifty pipelines, shared libraries and a cut-over to plan, this is the paid part.</p>
+  </section>
+
+  <section class="tiers">
+    <div class="tier">
+      <h2>Do it yourself</h2>
+      <p class="price">Free, MIT</p>
+      <ul>
+        <li>Six browser converters, nothing uploaded</li>
+        <li><code>npx jenkins-to-actions audit</code> for a whole organisation: inventory, effort estimate, converted workflows, secrets list</li>
+        <li><code>--open-prs</code> opens one pull request per repository</li>
+      </ul>
+      <a class="btn" href="/">Start converting</a>
+    </div>
+    <div class="tier featured">
+      <h2>Estate audit</h2>
+      <p class="price">£490 <span>fixed fee</span></p>
+      <p>I run the audit against your estate with a read-only token (or you run it and send me the output), then turn the raw result into a plan you can put in front of your team.</p>
+      <ul>
+        <li>Every pipeline and freestyle job inventoried, including the ones nobody remembers</li>
+        <li>A converted workflow for each, with the unconvertible parts marked and explained</li>
+        <li>Shared-library and plugin review: what has an Actions equivalent, what needs a rewrite</li>
+        <li>Effort estimate per repository and a suggested migration order</li>
+        <li>Secrets and runner plan: what to create, what to self-host</li>
+        <li>A 45-minute call to walk through it</li>
+      </ul>
+      <p class="small">Delivered within five working days. If the report doesn't give you a clear plan, you don't pay.</p>
+      <a class="btn primary" href="mailto:adam.p.gibbons@gmail.com?subject=CI%20estate%20audit&body=Hi%20Adam%2C%0A%0AWe%20run%20roughly%20___%20pipelines%20on%20___%20(Jenkins%2FGitLab%2FAzure%2F...)%20and%20want%20to%20move%20to%20GitHub%20Actions.%0A%0A">Book an audit</a>
+    </div>
+    <div class="tier">
+      <h2>Done-for-you migration</h2>
+      <p class="price">Fixed quote <span>after the audit</span></p>
+      <p>I do the migration: workflows finished and green, shared libraries replaced with reusable workflows or composite actions, secrets moved, runners set up, both systems run side by side until you switch off the old one.</p>
+      <ul>
+        <li>Fixed scope and price from the audit, audit fee credited</li>
+        <li>Pull requests into your repositories, reviewed by your team</li>
+        <li>Handover notes and a short session for your engineers</li>
+      </ul>
+      <a class="btn" href="mailto:adam.p.gibbons@gmail.com?subject=CI%20migration">Talk about a migration</a>
+    </div>
+  </section>
+
+  <article class="doc">
+    <h2>How it works</h2>
+    <ol>
+      <li><strong>Email me</strong> with a rough size (how many pipelines, which system). I reply within one working day with a short questionnaire and an invoice.</li>
+      <li><strong>Access.</strong> Either a read-only token to your Jenkins, GitHub organisation, GitLab group, Azure DevOps organisation or Bitbucket workspace, or you run <code>npx jenkins-to-actions audit</code> yourself and send me the output directory. Nothing is uploaded anywhere: the tool talks only to your platform.</li>
+      <li><strong>The report</strong> arrives within five working days as a document plus a repository of converted workflows. We go through it on a call.</li>
+      <li><strong>Optional migration.</strong> You get a fixed quote based on the audit. Take it, do it yourselves with the report, or anything in between.</li>
+    </ol>
+
+    <h2>Questions people ask</h2>
+    <h3>Why not just use the free converter?</h3>
+    <p>Do. The converter handles the mechanical 80 percent. The audit is for the other 20 percent: shared libraries, credential bindings, plugin steps with no equivalent, the order to migrate in so nothing breaks, and someone who has done it before to say which TODOs matter.</p>
+    <h3>Can you sign an NDA or work under our procurement?</h3>
+    <p>Yes. I trade as ALGD LTD (UK). Invoices by bank transfer or card.</p>
+    <h3>We have more than a hundred pipelines.</h3>
+    <p>The audit fee is the same; the migration quote scales with what the audit finds.</p>
+    <h3>Who is this?</h3>
+    <p>Adam Gibbons, lead DevOps engineer. I've run Jenkins estates and GitHub Actions at scale and wrote the converters on this site after doing this migration by hand more than once. Source and track record: <a href="https://github.com/Huckcity/jenkins-to-actions" rel="noopener">github.com/Huckcity/jenkins-to-actions</a>, with <a href="https://github.com/Huckcity/jenkins-to-actions/tree/main/docs/real-world" rel="noopener">unedited conversions of public repositories</a>.</p>
+  </article>
+</main>

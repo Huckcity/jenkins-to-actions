@@ -61,3 +61,8 @@ export const PAGES = [
     doc: doc('travis'),
   },
 ];
+
+// Pages that are not converters; body in site/<slug>.html
+export const STATIC_PAGES = [
+  { slug: 'migration', path: '/migration/', title: 'CI migration to GitHub Actions: audit and done-for-you service', ogTitle: 'CI → GitHub Actions migration service', description: 'Fixed-fee estate audit (£490) and done-for-you migrations from Jenkins, GitLab CI, Azure Pipelines, CircleCI, Bitbucket Pipelines or Travis CI to GitHub Actions, by the author of the free converters.' },
+];
