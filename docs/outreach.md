@@ -1,8 +1,10 @@
 # Outreach drafts (ready to paste)
 
-Posting from this environment was blocked, so these are finished texts for Adam to paste. Each one is specific to the thread it answers; they link to unedited converter output in `docs/real-world/`.
+The GitHub comments below were posted on 2026-10-23. The awesome-list PRs and the Reddit/HN/LinkedIn posts still need Adam. Each one is specific to the thread it answers; they link to unedited converter output in `docs/real-world/`.
 
 ## GitHub issue comments
+
+Posted 2026-10-23: [eclipse-packages](https://github.com/eclipse-packages/packages/issues/564#issuecomment-6353971523), [mantid](https://github.com/mantidproject/mantid/issues/39497#issuecomment-6353979911), [hls4ml](https://github.com/fastmachinelearning/hls4ml/issues/1557#issuecomment-6353971757). Watch them for replies.
 
 ### eclipse-packages/packages#564 — https://github.com/eclipse-packages/packages/issues/564
 
