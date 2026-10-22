@@ -91,3 +91,34 @@ test('open pull requests creates branch, files and PR', async () => {
   assert.match(JSON.parse(pr.body).body, /a note/);
   assert.match(JSON.parse(pr.body).body, /`X`/);
 });
+
+test('github crawl lists the tree and finds CI configs outside the root', async () => {
+  mockFetch([
+    ['GET /repos/acme/mono', { full_name: 'acme/mono', html_url: 'https://github.com/acme/mono', default_branch: 'main' }],
+    ['GET /repos/acme/mono/git/trees/main', { truncated: false, tree: [
+      { type: 'blob', path: 'README.md' }, { type: 'blob', path: '.jenkins/Jenkinsfile' }, { type: 'blob', path: 'build/Jenkins/nightly.jenkinsfile' },
+      { type: 'blob', path: '.azure-pipelines/release.yml' }, { type: 'blob', path: 'test/fixtures/Jenkinsfile' }, { type: 'tree', path: 'Jenkinsfile' }, { type: 'blob', path: 'node_modules/x/.travis.yml' },
+    ] }],
+    [/^GET \/repos\/acme\/mono\/contents\//, fx('scripted.Jenkinsfile')],
+  ]);
+  const est = await fromGithub({ org: null, token: 't', repos: ['acme/mono'] });
+  assert.deepEqual(est.items.map((i) => i.path), ['.azure-pipelines/release.yml', '.jenkins/Jenkinsfile', 'build/Jenkins/nightly.jenkinsfile']);
+  assert.deepEqual(est.items.map((i) => i.system), ['azure', 'jenkins', 'jenkins']);
+  assert.equal(est.source, 'GitHub acme');
+});
+
+test('several configs in one repo get workflow names from their paths', async () => {
+  const calls = mockFetch([
+    ['GET /repos/acme/mono', { default_branch: 'main' }],
+    ['GET /repos/acme/mono/git/ref/heads/main', { object: { sha: 'abc' } }],
+    ['GET /repos/acme/mono/git/ref/heads/ci%2Fgithub-actions', 'nope', 404],
+    ['POST /repos/acme/mono/git/refs', {}],
+    [/^PUT \/repos\/acme\/mono\/contents\//, { content: {} }],
+    ['GET /repos/acme/mono/pulls', []],
+    ['POST /repos/acme/mono/pulls', { html_url: 'https://github.com/acme/mono/pull/2' }],
+  ]);
+  const mk = (path, system) => ({ repo: 'acme/mono', path, system, yaml: 'name: CI\n', notes: [], secrets: [], hours: 1, todos: 0, defaultBranch: 'main' });
+  await openPullRequests([mk('.jenkins/Jenkinsfile', 'jenkins'), mk('build/Jenkins/nightly.jenkinsfile', 'jenkins'), mk('.azure-pipelines/release.yml', 'azure')], { token: 't', api: 'https://api.github.com', branch: 'ci/github-actions', dryRun: false });
+  const puts = calls.filter((c) => c.method === 'PUT').map((c) => decodeURIComponent(c.url.split('/contents/')[1]));
+  assert.deepEqual(puts, ['.github/workflows/ci-jenkins.yml', '.github/workflows/ci-build-jenkins-nightly.yml', '.github/workflows/ci-azure-pipelines-release.yml']);
+});

@@ -116,12 +116,26 @@ class Parser {
       }
       return { kind: 'try', block, catchBlock, finallyBlock, raw: this.src.slice(startTok.start, this.lastEnd()) };
     }
+    if (t.type === 'ident' && /^(def|void|String|boolean|Boolean|int|Integer|Map|List|Object)$/.test(t.value) && this.peek(1).type === 'ident' && this.peek(2).type === 'punct' && this.peek(2).value === '(') {
+      // function definition: parse the parameter names and the body as a block
+      const save = this.p;
+      this.next(); const nameTok = this.next();
+      const ps = this.peek().start; this.skipBalanced('(', ')');
+      const params = this.src.slice(ps + 1, this.lastEnd() - 1).split(',').map((x) => x.trim().split(/\s+/).pop().replace(/=.*$/, '').trim()).filter(Boolean);
+      this.skipNl();
+      if (this.is('punct', '{')) {
+        let block;
+        try { block = this.parseBlock(); } catch (e) { this.p = save; return this.parseRawStatement(startTok); }
+        return { kind: 'func', name: nameTok.value, params, block, raw: this.src.slice(startTok.start, this.lastEnd()) };
+      }
+      this.p = save;
+    }
     if (t.type === 'ident' && (t.value === 'def' || t.value === 'if' || t.value === 'for' || t.value === 'while' || t.value === 'try' || t.value === 'return' || t.value === 'else' || t.value === 'switch' || t.value === 'throw')) {
       return this.parseRawStatement(startTok);
     }
     if (t.type === 'ident') {
       // assignment: NAME = value
-      if (this.peek(1).type === 'punct' && this.peek(1).value === '=' ) {
+      if (this.peek(1).type === 'punct' && this.peek(1).value === '=' && !(this.peek(2).type === 'punct' && (this.peek(2).value === '=' || this.peek(2).value === '~'))) {
         this.next(); this.next();
         const value = this.parseExpr();
         return { kind: 'assign', name: t.value, value, raw: this.src.slice(startTok.start, this.lastEnd()) };
@@ -129,7 +143,7 @@ class Parser {
       // dotted assignment or dotted call: env.FOO = 'x', docker.build(...)
       const name = this.parseDottedName();
       const node = { kind: 'call', name, args: [], named: {}, block: null, raw: '' };
-      if (this.is('punct', '=')) {
+      if (this.is('punct', '=') && !(this.peek(1).type === 'punct' && (this.peek(1).value === '=' || this.peek(1).value === '~'))) {
         this.next();
         const value = this.parseExpr();
         return { kind: 'assign', name, value, raw: this.src.slice(startTok.start, this.lastEnd()) };
@@ -225,7 +239,7 @@ class Parser {
         node.args.push(this.parseExpr());
       }
       if (closer) this.skipNl();
-      if (this.is('punct', ',')) { this.next(); if (closer) this.skipNl(); continue; }
+      if (this.is('punct', ',')) { this.next(); this.skipNl(); continue; }
       if (closer && !this.is('punct', closer)) { this.skipNl(); if (this.is('punct', closer)) return; }
       if (!closer) {
         // allow trailing closure block args like: dir('x') { } handled by caller
@@ -377,6 +391,31 @@ const ENV_MAP = {
   JENKINS_HOME: '${{ runner.temp }}',
 };
 
+// `def NAME = "literal"` at the top of a script: remember the value so later "${NAME}" interpolations inline it.
+function noteConstant(raw, ctx) {
+  const m = /^def\s+([A-Za-z_]\w*)\s*=\s*(?:"([^"$\\]*)"|'([^'\\]*)'|(\d+(?:\.\d+)?)|(true|false))\s*$/.exec(raw.trim());
+  if (!m) return false;
+  ctx.constants[m[1]] = m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4] !== undefined ? m[4] : m[5];
+  return true;
+}
+
+// `NAME = "literal"` / `def NAME = 42` parsed as an assignment of a plain literal.
+function assignConstant(node, ctx) {
+  const v = node.value;
+  if (!v || /\./.test(node.name)) return false;
+  if (v.type === 'string' && !v.interpolate) { ctx.constants[node.name] = v.value; return true; }
+  if (v.type === 'number' || v.type === 'bool') { ctx.constants[node.name] = String(v.value); return true; }
+  if (v.type === 'map') { ctx.maps = ctx.maps || {}; ctx.maps[node.name] = v.entries; return true; }
+  return false;
+}
+// Resolve `name.key` against a remembered map literal; returns the value node or null.
+function resolveMapRef(v, ctx) {
+  if (!v || v.type !== 'ident' || !ctx.maps) return null;
+  const m = /^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$/.exec(v.name);
+  if (!m || !ctx.maps[m[1]] || !(m[2] in ctx.maps[m[1]])) return null;
+  return ctx.maps[m[1]][m[2]];
+}
+
 // Convert a Groovy GString ("...${env.FOO}...") into a GitHub-expression-bearing string.
 // `scope` tells us which bare identifiers are env vars we know about.
 function mapInterpolation(s, ctx, { inShell = false } = {}) {
@@ -391,12 +430,16 @@ function mapInterpolation(s, ctx, { inShell = false } = {}) {
 
 function mapExpr(expr, ctx, inShell) {
   let m;
+  if (ctx.constants && Object.prototype.hasOwnProperty.call(ctx.constants, expr)) return ctx.constants[expr];
+  { const ref = resolveMapRef({ type: 'ident', name: expr }, ctx); if (ref && (ref.type === 'string' || ref.type === 'number' || ref.type === 'bool')) return str(ref); }
   if ((m = /^(?:env\.)?([A-Z_][A-Z0-9_]*)$/.exec(expr))) {
     const name = m[1];
     if (ENV_MAP[name]) return inShell && name === 'WORKSPACE' ? '$GITHUB_WORKSPACE' : ENV_MAP[name];
     if (ctx.inlineEnv) {
       if (name in ctx.inlineEnv) return ctx.inlineEnv[name];
-      ctx.note(`Workflow-level \`env\` cannot reference other variables with \`\${{ env.${name} }}\`; move it to a job-level env or inline the value.`);
+      const varName = /^GITHUB_/.test(name) ? `JENKINS_${name}` : name; // repository variables may not start with GITHUB_
+      ctx.note(`\`${name}\` looks like a Jenkins global environment variable; it became the repository variable \`\${{ vars.${varName} }}\`. Create it under Settings → Secrets and variables → Actions → Variables.`);
+      return `\${{ vars.${varName} }}`;
     }
     if (ctx.envNames.has(name)) return inShell ? `$${name}` : `\${{ env.${name} }}`;
     if (expr.startsWith('env.')) return inShell ? `$${name}` : `\${{ env.${name} }}`;
@@ -428,6 +471,7 @@ export function convert(src, options = {}) {
     opts, notes, secrets,
     envNames: new Set(),
     vars: new Set(),
+    constants: {},
     note(msg) { if (!notes.includes(msg)) notes.push(msg); },
     secret(id, suffix = '') {
       const name = (id + (suffix ? '_' + suffix : '')).toUpperCase().replace(/[^A-Z0-9_]/g, '_').replace(/^[0-9]/, '_$&');
@@ -443,7 +487,8 @@ export function convert(src, options = {}) {
   try { tree = parse(src); } catch (e) { return { yaml: '', notes: [`Could not parse this Jenkinsfile: ${e.message}`], secrets: [], error: e.message }; }
 
   // Collect top-level Groovy variables (def x = ...) so interpolation can flag them.
-  for (const n of tree) if (n.kind === 'raw' && /^def\s+([A-Za-z_]\w*)/.test(n.raw)) ctx.vars.add(RegExp.$1);
+  ctx.functions = {};
+  for (const n of tree) { if (n.kind === 'raw' && /^def\s+([A-Za-z_]\w*)/.test(n.raw)) { ctx.vars.add(RegExp.$1); noteConstant(n.raw, ctx); } if (n.kind === 'assign') assignConstant(n, ctx); if (n.kind === 'func') ctx.functions[n.name] = n; }
 
   const pipeline = find(tree, 'pipeline');
   let wf;
@@ -468,8 +513,11 @@ function liftTodoComments(v) {
       if (k === 'if' && typeof val === 'string' && val.includes('/*')) {
         const todos = [...val.matchAll(/\/\*\s*(.*?)\s*\*\//g)].map((m) => m[1]);
         out.__comment_if = todos.join('\n');
-        const cleaned = val.replace(/\s*\/\*.*?\*\//g, '').replace(/\(\s*true\s*\)/g, 'true').replace(/true && |&& true/g, '').trim();
-        if (cleaned !== 'true' && cleaned !== '') out.if = cleaned;
+        let cleaned = val.replace(/\s*\/\*.*?\*\//g, '').trim();
+        for (let i = 0; i < 6; i++) cleaned = cleaned.replace(/\(\s*true\s*\)/g, 'true').replace(/true\s*\|\|\s*true/g, 'true').replace(/true\s*&&\s*|\s*&&\s*true/g, '').replace(/!\(?true\)?/g, 'false').trim();
+        if (/^(true|false|[\s()|&!]|true|false)*$/.test(cleaned) && /true|false/.test(cleaned) && !/[A-Za-z_.]+(?<!true|false)\b/.test(cleaned.replace(/true|false/g, ''))) {
+          // constant left after lifting the TODO comments: drop the `if`; the comment above the step says what to rewrite
+        } else if (cleaned !== '') out.if = cleaned;
       } else out[k] = liftTodoComments(val);
     }
     return out;
@@ -562,6 +610,30 @@ function finishJob(job, ctx) {
   // Drop duplicate plain checkout steps (auto-added + explicit `checkout scm`).
   let seenCheckout = false;
   job.steps = job.steps.filter((st) => { if (st.uses === 'actions/checkout@v4' && !st.with) { if (seenCheckout) return false; seenCheckout = true; } return true; });
+  // Jenkins variables read by shell scripts: define them on the job with their Actions equivalents.
+  if (ctx.shellShims && ctx.shellShims.size) {
+    const names = [...ctx.shellShims].sort(); ctx.shellShims = null;
+    for (const n of names) {
+      const val = ENV_MAP[n];
+      if (/\$\{\{\s*runner\./.test(val)) { for (const st of job.steps) if (st.run !== undefined && new RegExp(`\\$\\{?${n}\\b`).test(st.run)) { st.env = st.env || {}; if (!(n in st.env)) st.env[n] = val; } }
+      else { job.env = job.env || {}; if (!(n in job.env)) job.env[n] = val; }
+    }
+    ctx.note(`Shell scripts referenced Jenkins variables (${names.map((n) => `\`${n}\``).join(', ')}); they are defined in \`env\` with their GitHub equivalents.`);
+  }
+  // Hoist env entries and timeouts that every step repeats up to the job.
+  if (job.steps.length > 1) {
+    const first = job.steps[0].env || {};
+    for (const [k, v] of Object.entries(first)) {
+      if (/\$\{\{\s*(env|runner|matrix|steps|job)\./.test(String(v))) continue; // job-level env cannot use these contexts
+      if (job.steps.every((st) => st.env && st.env[k] === v)) {
+        job.env = job.env || {}; job.env[k] = v;
+        for (const st of job.steps) { delete st.env[k]; if (!Object.keys(st.env).length) delete st.env; }
+      }
+    }
+    const runSteps = job.steps.filter((st) => st.run !== undefined);
+    const t = runSteps.length ? runSteps[0]['timeout-minutes'] : null;
+    if (t && !job['timeout-minutes'] && runSteps.length > 1 && job.steps.every((st) => st['timeout-minutes'] === t || (st.run === undefined && st['timeout-minutes'] === undefined))) { job['timeout-minutes'] = t; for (const st of job.steps) delete st['timeout-minutes']; }
+  }
   const onWindows = /windows/.test(String(job['runs-on']));
   for (const st of job.steps) {
     if (st.shell === 'cmd' && !onWindows) { st.shell = 'bash'; st.run = '# TODO: this was a Windows `bat` step but the job runs on a non-Windows runner\n' + st.run; ctx.note('A `bat` step landed in a non-Windows job; either move it to a windows-latest job or rewrite it for bash.'); }
@@ -671,9 +743,11 @@ function convertParameters(block, ctx) {
       case 'choice': {
         input.type = 'choice';
         let choices = p.named.choices;
+        choices = resolveMapRef(choices, ctx) || choices;
         if (choices && choices.type === 'list') input.options = choices.items.map((c) => str(c));
         else if (choices && choices.type === 'string') input.options = choices.value.split('\n').filter(Boolean);
         else input.options = [];
+        if (!input.options.length) { input.type = 'string'; ctx.note(`Parameter \`${name}\` had choices that could not be resolved (\`${choices ? choices.raw || choices.name || '' : ''}\`); it became a free-text input. Add the \`options\` by hand.`); }
         if (input.options.length) input.default = input.options[0];
         break;
       }
@@ -919,7 +993,8 @@ function whenCond(w, ctx) {
     case 'environment': { const n = str(w.named.name), v = str(w.named.value); return `env.${n} == '${v}'`; }
     case 'equals': { return `${valueToString(w.named.actual, ctx).replace(/^\$\{\{\s*|\s*\}\}$/g, '')} == '${valueToString(w.named.expected, ctx)}'`; }
     case 'expression': {
-      const raw = w.block ? w.block.map((n) => n.raw).join('; ') : '';
+      const inner = /^expression\s*\{([\s\S]*)\}\s*$/.exec(w.raw || '');
+      const raw = inner ? inner[1].replace(/\s*\n\s*/g, ' ').trim() : w.block ? w.block.map((n) => n.raw).join('; ') : '';
       const guess = guessExpression(raw, ctx);
       if (guess) return guess;
       ctx.note(`\`when { expression { ${raw} } }\` must be rewritten as a GitHub expression by hand; a placeholder \`true\` was emitted.`);
@@ -991,7 +1066,7 @@ function convertSteps(block, ctx, group, scope = {}) {
   const out = [];
   for (const s of block || []) {
     if (s.kind === 'raw') {
-      if (/^def\s+(\w+)/.test(s.raw)) ctx.vars.add(RegExp.$1);
+      if (/^def\s+(\w+)/.test(s.raw)) { ctx.vars.add(RegExp.$1); if (noteConstant(s.raw, ctx)) continue; }
       out.push(todoStep(`Groovy statement needs a manual rewrite`, s.raw, group, scope, ctx));
       continue;
     }
@@ -1001,12 +1076,14 @@ function convertSteps(block, ctx, group, scope = {}) {
       if (!guess) ctx.note(`Groovy condition \`if (${s.cond})\` could not be translated; a placeholder \`true\` was emitted on the affected steps.`);
       const inner = (c) => ({ ...scope, cond: scope.cond ? `(${scope.cond}) && (${c})` : c });
       out.push(...convertSteps(s.block, ctx, group, inner(cond)));
-      if (s.elseBlock) out.push(...convertSteps(s.elseBlock, ctx, group, inner(`!(${cond.split(' /*')[0]})`)));
+      if (s.elseBlock) out.push(...convertSteps(s.elseBlock, ctx, group, inner(guess ? `!(${guess})` : `false /* TODO: else branch of if (${s.cond.replace(/\*\//g, '* /')}) */`)));
       continue;
     }
+    if (s.kind === 'func') { ctx.functions = ctx.functions || {}; ctx.functions[s.name] = s; continue; }
     if (s.kind === 'try') {
       out.push(...convertSteps(s.block, ctx, group, scope));
-      if (s.catchBlock && s.catchBlock.length) { out.push(...convertSteps(s.catchBlock, ctx, group, { ...scope, cond: scope.cond ? `(${scope.cond}) && failure()` : 'failure()' })); }
+      const catchBody = (s.catchBlock || []).filter((st) => !(st.kind === 'raw' && /^throw\b/.test(st.raw.trim())));
+      if (catchBody.length) { out.push(...convertSteps(catchBody, ctx, group, { ...scope, cond: scope.cond ? `(${scope.cond}) && failure()` : 'failure()' })); }
       if (s.finallyBlock && s.finallyBlock.length) { out.push(...convertSteps(s.finallyBlock, ctx, group, { ...scope, cond: scope.cond ? `(${scope.cond}) && always()` : 'always()' })); }
       continue;
     }
@@ -1023,6 +1100,7 @@ function convertSteps(block, ctx, group, scope = {}) {
       }
       if (/^currentBuild\./.test(s.name)) { ctx.note(`\`${s.raw}\` dropped (Jenkins build metadata).`); continue; }
       ctx.vars.add(s.name.split('.')[0]);
+      if (assignConstant(s, ctx)) continue; // a plain literal; later "${NAME}" interpolations inline it
       // def-less variable assignment from sh returnStdout
       const v = s.value;
       if (v.type === 'call' && v.name === 'sh' && v.named.returnStdout) {
@@ -1233,6 +1311,30 @@ function convertSteps(block, ctx, group, scope = {}) {
       case 'stage': { // scripted stage inside steps
         const nm = str(a); out.push(...convertSteps(s.block, ctx, { ...(group || {}), stage: group && group.stage ? `${group.stage} / ${nm}` : nm }, scope)); break;
       }
+      case 'copyArtifacts': { // Copy Artifact plugin
+        const filter = s.named.filter ? valueToString(s.named.filter, ctx) : '**';
+        const target = s.named.target ? valueToString(s.named.target, ctx) : '';
+        const project = s.named.projectName ? valueToString(s.named.projectName, ctx) : '';
+        const same = !project || project === '${{ github.workflow }}' || /JOB_NAME/.test(project);
+        if (same) {
+          const step = { name: stepName(group, 'Download artifacts'), uses: 'actions/download-artifact@v4', with: { pattern: '*-artifacts', 'merge-multiple': true } };
+          if (target && target !== './' && target !== '.') step.with.path = target;
+          out.push(applyGroup(step, group, scope));
+          ctx.note(`\`copyArtifacts\` from the same job became \`actions/download-artifact\` (pattern \`*-artifacts\`, filter was \`${filter}\`). Artifacts only flow between jobs of one workflow run; the producing job must upload them with \`actions/upload-artifact\`, and the download runs in a later job.`);
+        } else {
+          const step = { name: stepName(group, `Download artifacts from ${project}`), uses: 'dawidd6/action-download-artifact@v6', with: { workflow: `${project}.yml`, path: target || '.', 'workflow_conclusion': 'success' } };
+          out.push(applyGroup(step, group, scope));
+          ctx.note(`\`copyArtifacts\` from job \`${project}\` became \`dawidd6/action-download-artifact\` (filter was \`${filter}\`); set \`workflow:\` to that project's workflow file.`);
+        }
+        break;
+      }
+      case 'container': { // Kubernetes plugin: steps run inside a pod container
+        const cname = a ? str(a.type === 'map' ? (a.entries.name || a) : a) : '';
+        const image = ctx.podContainers && ctx.podContainers[cname];
+        if (cname && cname !== 'jnlp') { ctx.usedContainers = ctx.usedContainers || new Map(); ctx.usedContainers.set(cname, image || null); }
+        out.push(...convertSteps(s.block, ctx, group, scope));
+        break;
+      }
       case 'node': case 'ws': case 'ansiColor': case 'timestamps': case 'wrap': case 'withGradle': case 'configFileProvider': case 'sshagent': case 'nodejs': case 'withPythonEnv': case 'withNPM': case 'withGroovy': {
         if (s.name === 'sshagent') { ctx.note('`sshagent` became `webfactory/ssh-agent`; store the private key as a secret.'); const id = a && a.type === 'list' && a.items[0] ? str(a.items[0]) : a ? str(a) : 'ssh'; out.push(applyGroup({ name: stepName(group, 'Start ssh-agent'), uses: 'webfactory/ssh-agent@v0.9.0', with: { 'ssh-private-key': `\${{ secrets.${ctx.secret(id)} }}` } }, group, scope)); }
         else if (s.name === 'configFileProvider') ctx.note('`configFileProvider` dropped; commit the config file or write it from a secret in a `run` step.');
@@ -1246,6 +1348,21 @@ function convertSteps(block, ctx, group, scope = {}) {
         out.push(todoStep(`\`${s.name}\` needs a manual rewrite`, s.raw, group, scope, ctx)); break;
       }
       default: {
+        if (/^currentBuild\./.test(s.name)) { ctx.note(`\`${s.raw.split('\n')[0]}\` dropped (Jenkins build metadata has no equivalent; use \`$GITHUB_STEP_SUMMARY\` for a description).`); break; }
+        const fn = ctx.functions && ctx.functions[s.name];
+        if (fn && !s.block && (ctx.inlineDepth || 0) < 6) {
+          // A function defined in this Jenkinsfile: inline its body with the arguments bound as constants.
+          const saved = { ...ctx.constants };
+          fn.params.forEach((pname, i) => { const arg = s.args[i]; if (arg) ctx.constants[pname] = valueToString(arg, ctx); else delete ctx.constants[pname]; });
+          const hasReturn = fn.block.some((st) => st.kind === 'raw' && /^return\b/.test(st.raw));
+          ctx.inlineDepth = (ctx.inlineDepth || 0) + 1;
+          const sub = convertSteps(fn.block.filter((st) => !(st.kind === 'raw' && /^return\b/.test(st.raw))), ctx, group ? { ...group } : group, scope);
+          ctx.inlineDepth--;
+          ctx.constants = saved;
+          if (hasReturn) ctx.note(`Function \`${s.name}()\` returns a value; its steps were inlined but the returned value is not available to later steps.`);
+          out.push(...sub);
+          break;
+        }
         out.push(todoStep(`Unknown step \`${s.name}\` (probably a plugin); rewrite it`, s.raw, group, scope, ctx));
       }
     }
@@ -1275,6 +1392,8 @@ function shellOf(s, ctx) {
   let script;
   if (v.type === 'string') script = v.interpolate ? mapInterpolation(v.value, ctx, { inShell: true }) : v.value;
   else script = valueToString(v, ctx);
+  // The shell reads Jenkins' environment (WORKSPACE, BUILD_NUMBER, …); Actions does not set those, so shim them on the job.
+  for (const m of script.matchAll(/\$\{?([A-Z][A-Z0-9_]*)\}?/g)) if (ENV_MAP[m[1]] && !ctx.envNames.has(m[1]) && !(ctx.constants && m[1] in ctx.constants) && !(ctx.inlineEnv && m[1] in ctx.inlineEnv)) { ctx.shellShims = ctx.shellShims || new Set(); ctx.shellShims.add(m[1]); }
   // Normalise Groovy-style triple-quoted indentation
   const lines = script.replace(/\r/g, '').split('\n');
   while (lines.length && lines[0].trim() === '') lines.shift();
@@ -1368,21 +1487,62 @@ function convertPost(block, ctx, scope, jobIds, stageName) {
 
 function convertScripted(tree, ctx) {
   ctx.note('This is a scripted (Groovy) pipeline. Control flow, variables and library calls were turned into TODO steps; expect to finish the conversion by hand.');
-  const wf = { on: convertTriggers(null, null, ctx) };
+  const wf = {};
   const jobs = {};
-  // Find node { } blocks (possibly inside other blocks like timeout/properties/timestamps)
+  // Find node { } blocks (possibly inside other blocks like timeout/properties/timestamps/podTemplate)
   const nodes = [];
-  const walk = (block, parentLabel) => {
+  const triggerCalls = [];
+  let concurrency = null;
+  ctx.podContainers = ctx.podContainers || {};
+  const walk = (block, inPod) => {
     for (const n of block || []) {
       if (n.kind !== 'call') continue;
-      if (n.name === 'node') { nodes.push({ label: n.args.length ? str(n.args[0]) : null, block: n.block }); continue; }
-      if (n.name === 'properties') { ctx.note('Scripted `properties([...])` was dropped; move parameters/triggers into `on:` by hand.'); continue; }
-      if (n.block) walk(n.block, parentLabel);
+      if (n.name === 'node') {
+        const arg = n.args.length ? n.args[0] : null;
+        let label = arg && arg.type === 'string' ? str(arg) : null;
+        if (arg && arg.type !== 'string' && !inPod) ctx.note(`\`node(${str(arg)})\` used a variable label; mapped to \`${ctx.opts.runner}\`. Change \`runs-on\` if those builds needed a specific machine.`);
+        if (inPod) label = null;
+        nodes.push({ label, block: n.block, inPod }); continue;
+      }
+      if (n.name === 'podTemplate') {
+        const containers = n.named && n.named.containers && n.named.containers.type === 'list' ? n.named.containers.items : [];
+        for (const c of containers) if (c.type === 'call' && c.named) { const nm = c.named.name ? str(c.named.name) : ''; const img = c.named.image ? str(c.named.image) : ''; if (nm) ctx.podContainers[nm] = img; }
+        ctx.note('`podTemplate` (Kubernetes plugin) has no equivalent: the job runs on a hosted runner, and the container images below were mapped to `container:` or noted. Use actions-runner-controller if you still want pods on your own cluster.');
+        walk(n.block, true); continue;
+      }
+      if (n.name === 'properties') {
+        const a = firstArg(n);
+        const props = a && a.type === 'list' ? a.items : [];
+        for (const pr of props) {
+          if (pr.type !== 'call') continue;
+          if (pr.name === 'pipelineTriggers') {
+            const ta = firstArg(pr); const list = ta && ta.type === 'list' ? ta.items : [];
+            for (const t of list) {
+              if (t.type === 'call') triggerCalls.push(t);
+              else if (t.type === 'map') { const cls = t.entries.$class ? str(t.entries.$class) : ''; const spec = t.entries.spec || t.entries.scmpoll_spec; if (/TimerTrigger/.test(cls) && spec) triggerCalls.push({ kind: 'call', name: 'cron', args: [spec], named: {}, raw: pr.raw }); else if (/SCMTrigger/.test(cls)) triggerCalls.push({ kind: 'call', name: 'pollSCM', args: [], named: {}, raw: pr.raw }); else ctx.note(`Trigger \`${cls || 'unknown'}\` in \`properties\` has no equivalent and was dropped.`); }
+            }
+          } else if (pr.name === 'disableConcurrentBuilds') concurrency = { group: '${{ github.workflow }}-${{ github.ref }}', 'cancel-in-progress': false };
+          else if (pr.name === 'buildDiscarder') { /* GitHub keeps logs 90 days; nothing to do */ }
+          else if (pr.name === 'parameters') ctx.note('Scripted `properties([parameters(...)])` was dropped; declare them as `workflow_dispatch` inputs by hand.');
+          else ctx.note(`\`properties\` entry \`${pr.name}\` has no equivalent and was dropped.`);
+        }
+        continue;
+      }
+      if (n.block) walk(n.block, inPod);
     }
   };
   walk(tree);
+  wf.on = convertTriggers(triggerCalls.length ? triggerCalls : null, null, ctx);
+  if (concurrency) wf.concurrency = concurrency;
   if (!nodes.length) nodes.push({ label: null, block: tree });
   const agentOf = (label) => (label ? { runsOn: labelToRunsOn(label, ctx), container: null } : { runsOn: ctx.opts.runner, container: null });
+  const applyContainers = (job) => {
+    const used = ctx.usedContainers; ctx.usedContainers = null;
+    if (!used || !used.size) return;
+    const entries = [...used.entries()];
+    if (entries.length === 1 && entries[0][1]) { job.container = { image: entries[0][1] }; ctx.note(`Steps ran in pod container \`${entries[0][0]}\`; the job now runs in \`container: ${entries[0][1]}\`. Container jobs need a Linux runner and the image must have a shell.`); }
+    else ctx.note(`Steps ran in several pod containers (${entries.map(([n, i]) => i ? `\`${n}\` = ${i}` : `\`${n}\``).join(', ')}); Actions runs a whole job in one \`container:\`. Split the job per container or run those steps with \`docker run\`.`);
+  };
   if (ctx.opts.mode === 'single' || nodes.length === 1) {
     const agent = agentOf(nodes[0].label);
     const job = buildJob('build', agent, ctx, { checkout: false, toolSteps: [] });
@@ -1390,7 +1550,7 @@ function convertScripted(tree, ctx) {
       const body = nd.block || [];
       job.steps.push(...convertSteps(body, ctx, {}, {}));
     }
-    finishJob(job, ctx);
+    applyContainers(job); finishJob(job, ctx);
     jobs[job.__id] = stripMeta(job);
   } else {
     let prev = [];
@@ -1403,13 +1563,13 @@ function convertScripted(tree, ctx) {
           const job = buildJob(str(firstArg(st)), agent, ctx, { checkout: false, toolSteps: [] });
           if (prev.length) job.needs = prev;
           job.steps.push(...convertSteps(st.block, ctx, {}, {}));
-          finishJob(job, ctx); jobs[job.__id] = stripMeta(job); prev = [job.__id];
+          applyContainers(job); finishJob(job, ctx); jobs[job.__id] = stripMeta(job); prev = [job.__id];
         }
       } else {
         const job = buildJob(nd.label || 'build', agent, ctx, { checkout: false, toolSteps: [] });
         if (prev.length) job.needs = prev;
         job.steps.push(...convertSteps(body, ctx, {}, {}));
-        finishJob(job, ctx); jobs[job.__id] = stripMeta(job); prev = [job.__id];
+        applyContainers(job); finishJob(job, ctx); jobs[job.__id] = stripMeta(job); prev = [job.__id];
       }
     }
   }

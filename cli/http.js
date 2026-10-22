@@ -36,7 +36,31 @@ export function client({ base = '', headers = {}, auth = null, insecure = false 
 export const progress = (() => { let last = 0; return (msg) => { const now = Date.now(); if (now - last < 80 && !msg.endsWith('\n')) return; last = now; process.stderr.write(`\r${msg.slice(0, 100).padEnd(100)}`); }; })();
 export const progressDone = () => process.stderr.write('\n');
 
-// Known CI config paths, in the order they are probed.
+// Classify any repository path as a CI config of a supported system, or null.
+// Used when a crawler can list the whole tree; CI_FILES below is the fallback for root-only probing.
+const SKIP_DIRS = /(^|\/)(node_modules|vendor|\.git|fixtures|testdata|__snapshots__|__fixtures__)\//i;
+export function classifyPath(path) {
+  if (!path || SKIP_DIRS.test(path)) return null;
+  const base = path.split('/').pop();
+  const dir = path.slice(0, path.length - base.length);
+  if (/^Jenkinsfile(\..+)?$/i.test(base) || /\.jenkinsfile$/i.test(base)) return 'jenkins';
+  if (/^\.gitlab-ci\.ya?ml$/.test(base)) return 'gitlab';
+  if (/^azure-pipelines[\w.-]*\.ya?ml$/i.test(base)) return 'azure';
+  if (/^(\.azure-pipelines|\.azuredevops|\.azure)\//i.test(dir) && /\.ya?ml$/.test(base)) return 'azure';
+  if (path === '.circleci/config.yml' || /(^|\/)\.circleci\/config\.ya?ml$/.test(path)) return 'circleci';
+  if (base === 'bitbucket-pipelines.yml') return 'bitbucket';
+  if (base === '.travis.yml') return 'travis';
+  return null;
+}
+// Pick the CI configs out of a list of repository paths (root first, then shallowest), capped per repository.
+export function findCiPaths(paths, { max = 40 } = {}) {
+  const out = [];
+  for (const path of paths) { const system = classifyPath(path); if (system) out.push({ path, system }); }
+  out.sort((a, b) => a.path.split('/').length - b.path.split('/').length || a.path.localeCompare(b.path));
+  return out.slice(0, max);
+}
+
+// Known CI config paths, in the order they are probed when a tree listing is unavailable.
 export const CI_FILES = [
   { path: 'Jenkinsfile', system: 'jenkins' },
   { path: '.gitlab-ci.yml', system: 'gitlab' },

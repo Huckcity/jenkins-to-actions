@@ -12,7 +12,8 @@ export async function openPullRequests(recs, { token, api, branch, dryRun }) {
   for (const [repo, list] of byRepo) {
     n++;
     progress(`[${n}/${byRepo.size}] ${dryRun ? 'would open PR in' : 'opening PR in'} ${repo}`);
-    const files = list.map((r) => ({ path: `.github/workflows/${workflowName(r, list.length === 1)}.yml`, content: r.yaml, rec: r }));
+    const seen = new Map();
+    const files = list.map((r) => { let n = workflowName(r, list.length === 1); const k = seen.get(n) || 0; seen.set(n, k + 1); if (k) n = `${n}-${k + 1}`; return { path: `.github/workflows/${n}.yml`, content: r.yaml, rec: r }; });
     const body = prBody(list, files);
     if (dryRun) { for (const r of list) r.pr = `(dry run) ${files.map((f) => f.path).join(', ')} on ${branch}`; continue; }
     try {
@@ -47,8 +48,13 @@ export async function openPullRequests(recs, { token, api, branch, dryRun }) {
 
 function workflowName(r, single = true) {
   if (single) return 'ci';
+  // Several configs in one repository: name each workflow after where its config lived.
   const sys = r.system === 'jenkins-config' ? 'jenkins' : r.system;
-  return `ci-${sys}`;
+  const p = String(r.path || '').replace(/^\.?\//, '').replace(/\.(ya?ml|jenkinsfile|groovy)$/i, '');
+  const base = p.split('/').pop();
+  const isDefault = /^(Jenkinsfile|\.gitlab-ci|azure-pipelines|config|bitbucket-pipelines|\.travis)$/i.test(base) && p.split('/').length <= 2;
+  const slug = (isDefault ? sys : p).replace(/^\./, '').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase();
+  return `ci-${slug}`;
 }
 
 function prBody(list, files) {
