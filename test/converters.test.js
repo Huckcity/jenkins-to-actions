@@ -10,6 +10,8 @@ import * as azure from '../public/converters/azure.js';
 import * as circleci from '../public/converters/circleci.js';
 import * as bitbucket from '../public/converters/bitbucket.js';
 import * as travis from '../public/converters/travis.js';
+import * as actionsGitlab from '../public/converters/actions-gitlab.js';
+import Ajv from 'ajv';
 
 const fx = (f) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url), 'utf8');
 const actionlint = new URL('../tools/actionlint/actionlint', import.meta.url).pathname;
@@ -109,4 +111,64 @@ test('travis', () => {
   assert.match(wf.jobs['publish-package'].if, /^\(.*\) && startsWith\(github.ref, 'refs\/tags\/'\)$/);
   assert.ok(wf.jobs['publish-package'].steps.some((s) => s.name === 'Publish to npm'));
   assert.deepEqual(wf.on.push.branches, ['main', 'release/*']);
+});
+
+// ---------------------------------------------------------------- reverse direction: GitHub Actions -> GitLab CI
+const gitlabSchema = JSON.parse(readFileSync(new URL('./schemas/gitlab-ci.json', import.meta.url), 'utf8'));
+const validateGitlab = new Ajv({ strict: false, allErrors: true, validateFormats: false }).compile(gitlabSchema);
+function checkGitlab(label, r) {
+  assert.ok(r.yaml, `${label}: no yaml (${r.notes.join('; ')})`);
+  const doc = parseYaml(r.yaml);
+  const ok = validateGitlab(doc);
+  assert.ok(ok, ok ? '' : `${label}: schema errors ${JSON.stringify(validateGitlab.errors.slice(0, 5))}`);
+  return doc;
+}
+
+test('github actions -> gitlab ci', () => {
+  const r = actionsGitlab.convert(fx('github-actions.yml'));
+  const ci = checkGitlab('actions-gitlab', r);
+  assert.deepEqual(ci.workflow.rules[0], { if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS', when: 'never' });
+  assert.ok(ci.workflow.rules.some((x) => x.if === '$CI_COMMIT_BRANCH == "main"'));
+  assert.ok(ci.workflow.rules.some((x) => /CI_COMMIT_TAG =~/.test(x.if)));
+  assert.equal(ci.workflow.auto_cancel.on_new_commit, 'interruptible');
+  assert.deepEqual(ci.variables.ENVIRONMENT.options, ['staging', 'production']);
+  assert.equal(ci.default.image, 'ubuntu:24.04');
+  assert.deepEqual(ci.stages, ['lint', 'stage-2', 'docker', 'stage-4']);
+  assert.equal(ci.lint.image, 'node:20');
+  assert.deepEqual(ci.lint.cache.key, { files: ['package-lock.json'] });
+  assert.equal(ci.test.image, 'node:$NODE');
+  assert.deepEqual(ci.test.parallel.matrix[0], { NODE: ['18', '20', '22'] });
+  assert.equal(ci.test.services[0].alias, 'postgres');
+  assert.match(ci.test.variables.DATABASE_URL, /@postgres:5432/);
+  assert.equal(ci.test.timeout, '30m');
+  assert.deepEqual(ci.test.artifacts.reports, { junit: ['junit.xml'], dotenv: 'build.env' });
+  assert.deepEqual(ci.test.artifacts.paths, ['dist/']);
+  assert.match(ci.test.script.join('\n'), />> build.env/);
+  assert.match(ci.test.script.join('\n'), /if \[ -n "\$COVERAGE" \]/);
+  assert.equal(ci.docker.rules[0].if, '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_TAG =~ /^v/)');
+  assert.ok(ci.docker.services.includes('docker:27-dind'));
+  assert.match(ci.docker.script.join('\n'), /docker buildx build --platform linux\/amd64,linux\/arm64 .* -t \$CI_REGISTRY_IMAGE:\$CI_COMMIT_SHA --push \./);
+  assert.ok(ci.docker.needs.some((n) => n === 'test' || n.job === 'test'));
+  assert.equal(ci.deploy.rules[0].if, '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"');
+  assert.equal(ci.deploy.environment.name, '${ENVIRONMENT:-staging}');
+  assert.deepEqual(ci.deploy.id_tokens, { GITLAB_OIDC_TOKEN: { aud: 'https://gitlab.com' } });
+  assert.match(ci.deploy.script.join('\n'), /assume-role-with-web-identity/);
+  assert.match(ci.deploy.after_script.join('\n'), /CI_JOB_STATUS" = "failed"[\s\S]*SLACK_WEBHOOK_URL/);
+  assert.equal(ci.release.release.tag_name, '$CI_COMMIT_TAG');
+  assert.deepEqual(ci.windows.tags, ['saas-windows-medium-amd64']);
+  assert.equal(ci.codeql, undefined);
+  assert.equal(ci.stale, undefined);
+  assert.deepEqual(ci.include, [{ template: 'Jobs/SAST.gitlab-ci.yml' }]);
+  assert.deepEqual(r.secrets, ['CODECOV_TOKEN', 'SLACK_WEBHOOK_URL']);
+});
+
+test('github actions -> gitlab ci: unknown actions become loud TODOs, conditions that cannot translate are flagged', () => {
+  const r = actionsGitlab.convert(`on: [push]\njobs:\n  a:\n    runs-on: ubuntu-latest\n    if: contains(toJSON(github.event), 'x')\n    steps:\n      - uses: someone/odd-action@v1\n        with:\n          thing: 1\n      - run: echo hi\n        working-directory: sub\n      - uses: actions/setup-python@v5\n        with:\n          python-version: '3.12'\n          cache: pip\n`);
+  const ci = checkGitlab('actions-gitlab-todo', r);
+  assert.equal(ci.a.image, 'python:3.12');
+  assert.equal(ci.a.rules[0].when, 'on_success');
+  assert.match(ci.a.script[0], /TODO: replace action someone\/odd-action@v1[\s\S]*with thing: 1[\s\S]*exit 1/);
+  assert.match(ci.a.script[1], /cd sub\necho hi\ncd "\$CI_PROJECT_DIR"/);
+  assert.deepEqual(ci.a.cache.paths, ['.cache/pip']);
+  assert.ok(r.notes.some((n) => /could not be translated/.test(n)));
 });

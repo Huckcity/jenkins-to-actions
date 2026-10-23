@@ -105,7 +105,6 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
 </header>
 <main>
   <div class="opts">
-
     <label>Default runner
       <select id="runner">
         <option>ubuntu-latest</option><option>ubuntu-24.04</option><option>ubuntu-22.04</option><option>windows-latest</option><option>macos-latest</option><option>self-hosted</option>
@@ -118,7 +117,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
   <div class="grid">
     <div class="pane">
       <div class="bar"><span>.gitlab-ci.yml</span><span id="inmeta"></span></div>
-      <textarea id="in" spellcheck="false" aria-label="Jenkinsfile input" placeholder="stages: [build, test]&#10;&#10;build:&#10;  stage: build&#10;  image: node:20&#10;  script:&#10;    - npm ci&#10;    - npm run build&#10;  artifacts:&#10;    paths: [dist/]&#10;&#10;test:&#10;  stage: test&#10;  script: npm test"></textarea>
+      <textarea id="in" spellcheck="false" aria-label=".gitlab-ci.yml input" placeholder="stages: [build, test]&#10;&#10;build:&#10;  stage: build&#10;  image: node:20&#10;  script:&#10;    - npm ci&#10;    - npm run build&#10;  artifacts:&#10;    paths: [dist/]&#10;&#10;test:&#10;  stage: test&#10;  script: npm test"></textarea>
     </div>
     <div class="pane">
       <div class="bar"><span>.github/workflows/ci.yml</span><span id="outmeta"></span></div>
@@ -136,7 +135,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
     </div>
   </section>
 
-  <nav class="sources" aria-label="Other converters"><span>Convert from:</span><a href="/">Jenkinsfile</a><span aria-hidden="true">·</span><a class="current" aria-current="page" href="/gitlab-ci-to-github-actions/">GitLab CI</a><span aria-hidden="true">·</span><a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a><span aria-hidden="true">·</span><a href="/circleci-to-github-actions/">CircleCI</a><span aria-hidden="true">·</span><a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a><span aria-hidden="true">·</span><a href="/travis-ci-to-github-actions/">Travis CI</a></nav>
+  <nav class="sources" aria-label="Other converters"><span>Convert from:</span><a href="/">Jenkinsfile</a><span aria-hidden="true">·</span><a class="current" aria-current="page" href="/gitlab-ci-to-github-actions/">GitLab CI</a><span aria-hidden="true">·</span><a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a><span aria-hidden="true">·</span><a href="/circleci-to-github-actions/">CircleCI</a><span aria-hidden="true">·</span><a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a><span aria-hidden="true">·</span><a href="/travis-ci-to-github-actions/">Travis CI</a><span aria-hidden="true">·</span><span>and back:</span><a href="/github-actions-to-gitlab-ci/">GitHub Actions → GitLab CI</a></nav>
   <article class="doc">
     <h2>What this converter does</h2>
     <p>Paste a <code>.gitlab-ci.yml</code> and you get a GitHub Actions workflow plus a list of everything that did not map cleanly. YAML anchors and <code>extends:</code> are resolved first, so hidden <code>.template</code> jobs work. Conversion runs entirely in your browser; nothing is uploaded.</p>
@@ -177,6 +176,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
     <p>No. The page is static and the converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/gitlab.js" rel="noopener">gitlab.js on GitHub</a>.</p>
     <h3>How does this compare with GitHub Actions Importer?</h3>
     <p>Actions Importer is a CLI that connects to your GitLab instance and converts in bulk. This page is for one file at a time with nothing to install. The same converter is available as <code>npx jenkins-to-actions convert .gitlab-ci.yml</code>.</p>
+
 
     <h2>Migrating a whole organisation?</h2>
     <p>The same converters ship as a command-line audit. Point it at a GitHub organisation, a GitLab group, an Azure DevOps organisation, a Bitbucket workspace or a Jenkins server and it inventories every CI configuration it finds, converts what it can, estimates the effort per repository and lists the secrets to create. With <code>--open-prs</code> it opens a pull request in each GitHub repository with the workflow and the notes. Nothing is sent anywhere except the platform you point it at.</p>

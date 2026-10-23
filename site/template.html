@@ -92,36 +92,29 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
 </head>
 <body data-source="{{SOURCE}}">
 <header>
-  <h1>{{H1}} → GitHub Actions <span>converter</span></h1>
+  <h1>{{H1}} → {{TARGET}} <span>converter</span></h1>
   <div class="actions">
     <select id="example" aria-label="Load an example">
       <option value="">Load an example…</option>
 {{EXAMPLES}}
     </select>
     <button id="copy">Copy YAML</button>
-    <button id="download" class="primary">Download workflow.yml</button>
+    <button id="download" class="primary">{{DOWNLOAD_LABEL}}</button>
     <a class="header-link" href="/migration/">Whole estate? Fixed-fee audit</a>
   </div>
 </header>
 <main>
   <div class="opts">
-{{LAYOUT_OPTION}}
-    <label>Default runner
-      <select id="runner">
-        <option>ubuntu-latest</option><option>ubuntu-24.04</option><option>ubuntu-22.04</option><option>windows-latest</option><option>macos-latest</option><option>self-hosted</option>
-      </select>
-    </label>
-    <label>Workflow name <input type="text" id="wfname" placeholder="CI" size="12"></label>
-    <label><input type="checkbox" id="checkout" checked> Add actions/checkout</label>
+{{OPTIONS}}
     <span>Everything runs in your browser. Nothing is uploaded.</span>
   </div>
   <div class="grid">
     <div class="pane">
       <div class="bar"><span>{{INPUT_LABEL}}</span><span id="inmeta"></span></div>
-      <textarea id="in" spellcheck="false" aria-label="Jenkinsfile input" placeholder="{{PLACEHOLDER}}"></textarea>
+      <textarea id="in" spellcheck="false" aria-label="{{INPUT_LABEL}} input" placeholder="{{PLACEHOLDER}}"></textarea>
     </div>
     <div class="pane">
-      <div class="bar"><span>.github/workflows/ci.yml</span><span id="outmeta"></span></div>
+      <div class="bar"><span>{{OUTPUT_LABEL}}</span><span id="outmeta"></span></div>
       <pre class="out" id="out" aria-live="polite"></pre>
     </div>
   </div>
@@ -139,6 +132,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
   <nav class="sources" aria-label="Other converters">{{NAV}}</nav>
   <article class="doc">
 {{DOC}}
+{{TAIL}}
     <h2>Migrating a whole organisation?</h2>
     <p>The same converters ship as a command-line audit. Point it at a GitHub organisation, a GitLab group, an Azure DevOps organisation, a Bitbucket workspace or a Jenkins server and it inventories every CI configuration it finds, converts what it can, estimates the effort per repository and lists the secrets to create. With <code>--open-prs</code> it opens a pull request in each GitHub repository with the workflow and the notes. Nothing is sent anywhere except the platform you point it at.</p>
     <pre class="out" style="min-height:0;white-space:pre-wrap">GITHUB_TOKEN=… npx jenkins-to-actions audit --github-org acme          # report + workflows

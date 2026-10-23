@@ -21,6 +21,7 @@
   "author": "Adam Gibbons",
   "license": "MIT",
   "devDependencies": {
+    "ajv": "^8.20.0",
     "esbuild": "^0.25.10",
     "yaml": "^2.8.1"
   },

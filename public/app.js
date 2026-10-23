@@ -1,6 +1,8 @@
 import { SOURCES } from './converters/index.js';
 const $ = (id) => document.getElementById(id);
 const source = document.body.dataset.source || 'jenkins';
+const entry = SOURCES[source];
+const outFile = entry.out || 'ci.yml';
 const inEl = $('in'), outEl = $('out'), notes = $('notes'), notesList = $('notes-list');
 let lastYaml = '';
 let convertFn = null;
@@ -24,8 +26,12 @@ function run() {
   $('inmeta').textContent = src ? `${src.split('\n').length} lines` : '';
   if (!src.trim()) { outEl.innerHTML = `<span class="c"># Paste your ${esc(SOURCES[source].file)} on the left, or load an example.</span>`; notes.hidden = true; lastYaml = ''; return; }
   if (!convertFn) { ready.then(run); return; }
-  const opts = { runner: $('runner').value, workflowName: $('wfname').value.trim(), checkout: $('checkout').checked };
+  const opts = {};
+  if ($('runner')) opts.runner = $('runner').value;
+  if ($('wfname')) opts.workflowName = $('wfname').value.trim();
+  if ($('checkout')) opts.checkout = $('checkout').checked;
   if ($('mode')) opts.mode = $('mode').value;
+  if ($('image')) opts.image = $('image').value;
   let res;
   try { res = convertFn(src, opts); } catch (e) { res = { yaml: '', notes: [`Converter crashed: ${e.message}. Please email this file so it can become a test case.`], error: true }; }
   lastYaml = res.yaml;
@@ -39,10 +45,10 @@ function run() {
   try { localStorage.setItem(`j2a-src-${source}`, src); } catch {}
 }
 let t; inEl.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 150); });
-for (const id of ['mode', 'runner', 'wfname', 'checkout']) if ($(id)) $(id).addEventListener('change', run);
-$('wfname').addEventListener('input', run);
+for (const id of ['mode', 'runner', 'wfname', 'checkout', 'image']) if ($(id)) $(id).addEventListener('change', run);
+if ($('wfname')) $('wfname').addEventListener('input', run);
 $('copy').addEventListener('click', async () => { if (!lastYaml) return; try { await navigator.clipboard.writeText(lastYaml); $('copy').textContent = 'Copied'; setTimeout(() => ($('copy').textContent = 'Copy YAML'), 1200); } catch {} });
-$('download').addEventListener('click', () => { if (!lastYaml) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lastYaml], { type: 'text/yaml' })); a.download = 'ci.yml'; a.click(); URL.revokeObjectURL(a.href); });
+$('download').addEventListener('click', () => { if (!lastYaml) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lastYaml], { type: 'text/yaml' })); a.download = outFile; a.click(); URL.revokeObjectURL(a.href); });
 $('example').addEventListener('change', async (e) => { const v = e.target.value; if (!v) return; const r = await fetch(`/examples/${v}`); inEl.value = await r.text(); run(); e.target.value = ''; });
 try { const saved = localStorage.getItem(`j2a-src-${source}`); if (saved) inEl.value = saved; } catch {}
 run();

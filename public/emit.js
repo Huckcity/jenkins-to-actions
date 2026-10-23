@@ -33,6 +33,9 @@ export function toYaml(value, indent = 0, lines = []) {
       } else if (Array.isArray(item)) {
         const sub = toYaml(item, indent + 2, []);
         lines.push(pad + '-'); lines.push(...sub);
+      } else if (typeof item === 'string' && item.includes('\n')) {
+        lines.push(pad + '- |');
+        for (const l of item.replace(/\n+$/, '').split('\n')) lines.push(l.trim() === '' ? '' : pad + '  ' + l);
       } else {
         lines.push(pad + '- ' + scalar(item));
       }
@@ -48,7 +51,7 @@ export function toYaml(value, indent = 0, lines = []) {
       if (v instanceof Comment) { for (const l of v.text.split('\n')) lines.push(pad + '# ' + l); continue; }
       if (Array.isArray(v)) {
         if (v.length === 0) { lines.push(`${pad}${yKey(k)}: []`); continue; }
-        const allScalar = v.every((x) => x === null || ['string', 'number', 'boolean'].includes(typeof x)) && v.length <= 6 && v.every((x) => String(x).length < 40);
+        const allScalar = v.every((x) => x === null || ['string', 'number', 'boolean'].includes(typeof x)) && v.length <= 6 && v.every((x) => String(x).length < 40) && !/^(script|before_script|after_script)$/.test(k);
         if (allScalar) { lines.push(`${pad}${yKey(k)}: [${v.map(scalar).join(', ')}]`); continue; }
         lines.push(`${pad}${yKey(k)}:`);
         toYaml(v, indent + 2, lines);

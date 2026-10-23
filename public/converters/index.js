@@ -6,7 +6,11 @@ export const SOURCES = {
   circleci: { name: 'CircleCI', file: '.circleci/config.yml', load: () => import('./circleci.js') },
   bitbucket: { name: 'Bitbucket Pipelines', file: 'bitbucket-pipelines.yml', load: () => import('./bitbucket.js') },
   travis: { name: 'Travis CI', file: '.travis.yml', load: () => import('./travis.js') },
+  // Reverse direction: GitHub Actions -> GitLab CI
+  'actions-gitlab': { name: 'GitHub Actions', file: '.github/workflows/ci.yml', out: '.gitlab-ci.yml', target: 'GitLab CI', load: () => import('./actions-gitlab.js') },
 };
+// Converters whose output is not a GitHub Actions workflow, keyed by `--to` name.
+export const TARGETS = { gitlab: 'actions-gitlab' };
 
 // Guess the source system from a file name or the content.
 export function detect(filename = '', content = '') {
@@ -17,7 +21,9 @@ export function detect(filename = '', content = '') {
   if (/\.circleci\/config\.ya?ml$/.test(f)) return 'circleci';
   if (/bitbucket-pipelines\.ya?ml$/.test(f)) return 'bitbucket';
   if (/\.travis\.ya?ml$/.test(f)) return 'travis';
+  if (/\.github\/workflows\/[^/]+\.ya?ml$/.test(f)) return 'actions-gitlab';
   const c = String(content);
+  if (/^\s*runs-on:|^\s*-\s*uses:\s*actions\//m.test(c)) return 'actions-gitlab';
   if (/^\s*pipeline\s*\{|^\s*node\s*(\(|\{)|^\s*@Library/m.test(c)) return 'jenkins';
   if (/^\s*pipelines:\s*$/m.test(c)) return 'bitbucket';
   if (/^\s*language:\s*\w+|^\s*(before_install|after_success|dist|rvm|node_js):/m.test(c)) return 'travis';

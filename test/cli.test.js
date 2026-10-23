@@ -64,3 +64,10 @@ test('audit over a directory writes report, inventory and workflows', () => {
   assert.match(report, /## Suggested order/); assert.match(report, /Secrets to create/);
   for (const f of readdirSync(join(dir, 'workflows'))) lint(readFileSync(join(dir, 'workflows', f), 'utf8'), f.replace('.yml', ''));
 });
+
+test('convert --to gitlab prints a .gitlab-ci.yml', () => {
+  const out = execFileSync('node', [new URL('../cli/index.js', import.meta.url).pathname, 'convert', new URL('./fixtures/github-actions.yml', import.meta.url).pathname, '--to', 'gitlab', '--image', 'debian:bookworm-slim'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  assert.match(out, /^# Converted from the "CI" workflow/);
+  assert.match(out, /image: debian:bookworm-slim/);
+  assert.match(out, /parallel:\n    matrix:/);
+});

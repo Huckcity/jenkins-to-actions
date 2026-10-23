@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub Actions to GitLab CI converter</title>
+<meta name="description" content="Paste a GitHub Actions workflow, get a .gitlab-ci.yml. Jobs, needs, matrix, triggers, secrets, artifacts, caches, services and about 100 Marketplace actions are mapped to GitLab CI keywords and commands. Runs in your browser.">
+<link rel="canonical" href="https://ci2actions.dev/github-actions-to-gitlab-ci/">
+<meta property="og:title" content="GitHub Actions → GitLab CI converter">
+<meta property="og:description" content="Paste a GitHub Actions workflow, get a .gitlab-ci.yml. Jobs, needs, matrix, triggers, secrets, artifacts, caches, services and about 100 Marketplace actions are mapped to GitLab CI keywords and commands. Runs in your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d33833'/%3E%3Cpath d='M8 16h12M15 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1b1f24;--muted:#5b6470;--line:#d9dee5;--accent:#1f6feb;--accent-ink:#fff;--warn-bg:#fff6e0;--warn-line:#f0c36d;--code-bg:#0f1419;--code-ink:#e6edf3;--ok:#1a7f37}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--muted:#8b949e;--line:#30363d;--accent:#2f81f7;--warn-bg:#2b2111;--warn-line:#7a5a1e;--code-bg:#0a0d12;--code-ink:#e6edf3;--ok:#3fb950}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:1.1rem;margin:0;font-weight:650;letter-spacing:-.01em}
+header h1 span{color:var(--muted);font-weight:400}
+.actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+button,select,input[type=text]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.4rem .7rem}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:hover{border-color:var(--accent)}
+main{max-width:1400px;margin:0 auto;padding:1rem}
+.opts{display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;margin:0 0 .8rem;font-size:.92rem;color:var(--muted)}
+.opts label{display:flex;gap:.35rem;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.pane{display:flex;flex-direction:column;min-height:60vh;min-width:0}
+.grid{min-width:0}
+.pane .bar{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted);margin-bottom:.35rem}
+textarea,pre.out{flex:1;width:100%;max-width:100%;min-height:55vh;margin:0;padding:.8rem;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);color:var(--code-ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;resize:vertical}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+pre.out .c{color:#8b949e}pre.out .k{color:#79c0ff}pre.out .s{color:#a5d6ff}pre.out .t{color:#ffa657}
+.notes{margin:1rem 0 0;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.8rem 1rem}
+.notes h2{font-size:.95rem;margin:0 0 .4rem}
+.notes ul{margin:0;padding-left:1.2rem}
+.notes li{margin:.25rem 0}
+.notes code,.doc code{background:rgba(127,127,127,.15);padding:.05em .3em;border-radius:4px;font-size:.9em}
+.notes.ok{background:transparent;border-color:var(--ok)}
+.support{margin:1.5rem 0;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.9rem 1rem}
+.support p{margin:0}
+.support .btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.support a.btn,.tier a.btn{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:.4rem .8rem;color:var(--ink);background:var(--bg)}
+.support a.btn.primary,.tier a.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.doc{max-width:860px;margin:2rem auto 3rem;color:var(--ink)}
+.doc h2{font-size:1.25rem;margin:1.8rem 0 .6rem}
+.doc h3{font-size:1.02rem;margin:1.2rem 0 .4rem}
+.doc table{border-collapse:collapse;width:100%;font-size:.92rem}
+.doc th,.doc td{text-align:left;border-bottom:1px solid var(--line);padding:.4rem .5rem;vertical-align:top}
+.doc th{color:var(--muted);font-weight:600}
+.sources{max-width:860px;margin:1.5rem auto 0;font-size:.9rem;color:var(--muted);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}.sources a{white-space:nowrap}.sources a.current{color:var(--ink);font-weight:600;text-decoration:none}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem;border-top:1px solid var(--line)}
+.sr{position:absolute;left:-9999px}
+.offer{max-width:1100px}
+.offer .hero{text-align:center;margin:1.5rem auto 2rem;max-width:760px}
+.offer .hero h1{font-size:2rem;line-height:1.15;letter-spacing:-.02em;margin:0 0 .8rem}
+.offer .lede{color:var(--muted);font-size:1.08rem;margin:0}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;align-items:stretch}
+.tier{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.2rem 1.3rem;display:flex;flex-direction:column;min-width:0}
+.tier.featured{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,111,235,.12)}
+.tier h2{margin:0 0 .2rem;font-size:1.15rem}
+.tier .price{font-size:1.6rem;font-weight:700;margin:.2rem 0 .8rem;letter-spacing:-.02em}
+.tier .price span{font-size:.9rem;font-weight:500;color:var(--muted)}
+.tier ul{padding-left:1.1rem;margin:.4rem 0 1rem}
+.tier li{margin:.35rem 0}
+.tier p{margin:.3rem 0}
+.tier .small{color:var(--muted);font-size:.9rem}
+.tier .btn{margin-top:auto;text-align:center;padding:.6rem 1rem;font-weight:600}
+.offer .doc ol li{margin:.5rem 0}
+.header-link{color:var(--muted);font-size:.9rem;text-decoration:none;border:1px solid var(--line);padding:.3rem .6rem;border-radius:999px}
+.header-link:hover{border-color:var(--accent);color:var(--accent)}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+@media (max-width:860px){.calc-grid{grid-template-columns:1fr}}
+.calc label{display:block;margin:.5rem 0;font-size:.92rem;color:var(--muted)}
+.calc label select{display:block;width:100%;margin-top:.25rem;padding:.45rem .5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.calc .rows{margin:.8rem 0 .5rem}
+.calc .row{display:grid;grid-template-columns:1fr 120px 32px;gap:.4rem;align-items:center;margin:.35rem 0}
+.calc .row.head{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.calc .row select,.calc .row input{padding:.4rem .5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;min-width:0}
+.calc .row .rm{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;height:32px;cursor:pointer}
+.calc table.result{width:100%;border-collapse:collapse;font-size:.9rem;margin:.4rem 0 1rem}
+.calc table.result th,.calc table.result td{text-align:left;padding:.35rem .4rem;border-bottom:1px solid var(--line);vertical-align:top}
+.calc table.result td:not(:first-child){text-align:right;white-space:nowrap}
+.calc .muted{color:var(--muted);font-size:.82rem}
+.calc .tier .price{font-size:2.2rem}
+.calc .tier h3{margin:.8rem 0 .2rem;font-size:1rem}
+</style>
+</head>
+<body data-source="actions-gitlab">
+<header>
+  <h1>GitHub Actions → GitLab CI <span>converter</span></h1>
+  <div class="actions">
+    <select id="example" aria-label="Load an example">
+      <option value="">Load an example…</option>
+      <option value="github-actions.yml">Node app: matrix, services, Docker, AWS OIDC deploy, release</option>
+    </select>
+    <button id="copy">Copy YAML</button>
+    <button id="download" class="primary">Download .gitlab-ci.yml</button>
+    <a class="header-link" href="/migration/">Whole estate? Fixed-fee audit</a>
+  </div>
+</header>
+<main>
+  <div class="opts">
+    <label>Default image
+      <select id="image">
+        <option>ubuntu:24.04</option><option>ubuntu:22.04</option><option>debian:bookworm-slim</option><option>alpine:3.20</option><option>node:22</option><option>python:3.12</option><option>golang:1.23</option><option>eclipse-temurin:21</option>
+      </select>
+    </label>
+    <span>Everything runs in your browser. Nothing is uploaded.</span>
+  </div>
+  <div class="grid">
+    <div class="pane">
+      <div class="bar"><span>.github/workflows/ci.yml</span><span id="inmeta"></span></div>
+      <textarea id="in" spellcheck="false" aria-label=".github/workflows/ci.yml input" placeholder="name: CI&#10;on:&#10;  push:&#10;    branches: [main]&#10;  pull_request:&#10;&#10;jobs:&#10;  test:&#10;    runs-on: ubuntu-latest&#10;    steps:&#10;      - uses: actions/checkout@v4&#10;      - uses: actions/setup-node@v4&#10;        with:&#10;          node-version: 20&#10;      - run: npm ci&#10;      - run: npm test"></textarea>
+    </div>
+    <div class="pane">
+      <div class="bar"><span>.gitlab-ci.yml</span><span id="outmeta"></span></div>
+      <pre class="out" id="out" aria-live="polite"></pre>
+    </div>
+  </div>
+  <section class="notes" id="notes" hidden><h2 id="notes-title">Review before you commit</h2><ul id="notes-list"></ul></section>
+
+  <section class="support">
+    <p><strong>Useful?</strong> This tool is free and has no ads. If it saved you an afternoon, a small sponsorship keeps it maintained.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/sponsors/Huckcity" rel="noopener">Sponsor on GitHub</a>
+      <a class="btn" href="https://github.com/Huckcity/jenkins-to-actions" rel="noopener">Source on GitHub</a>
+      <a class="btn" href="/migration/">Migrating a whole estate? Fixed-fee audit</a>
+    </div>
+  </section>
+
+  <nav class="sources" aria-label="Other converters"><span>Convert from:</span><a href="/">Jenkinsfile</a><span aria-hidden="true">·</span><a href="/gitlab-ci-to-github-actions/">GitLab CI</a><span aria-hidden="true">·</span><a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a><span aria-hidden="true">·</span><a href="/circleci-to-github-actions/">CircleCI</a><span aria-hidden="true">·</span><a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a><span aria-hidden="true">·</span><a href="/travis-ci-to-github-actions/">Travis CI</a><span aria-hidden="true">·</span><span>and back:</span><a class="current" aria-current="page" href="/github-actions-to-gitlab-ci/">GitHub Actions → GitLab CI</a></nav>
+  <article class="doc">
+    <h2>What this converter does</h2>
+    <p>Paste a GitHub Actions workflow and you get a <code>.gitlab-ci.yml</code> plus a list of everything that did not map cleanly. It is the same idea as the other converters on this site, run the other way: for teams moving from GitHub to GitLab (gitlab.com or self-managed), or keeping both. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>The output is a starting point, not a finished migration. Marketplace actions become the shell commands or GitLab keywords that replace them; anything without a clean equivalent becomes a <code>TODO</code> step that fails loudly, and the notes list the CI/CD variables you need to create.</p>
+
+    <h2>How GitHub Actions concepts map to GitLab CI</h2>
+    <table>
+      <thead><tr><th>GitHub Actions</th><th>GitLab CI</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>on: push / pull_request / tags</code></td><td><code>workflow: rules</code></td><td>Branch and tag filters become <code>$CI_COMMIT_BRANCH</code> / <code>$CI_COMMIT_TAG</code> rules; <code>paths</code> becomes <code>changes</code>. Push + pull_request gets the standard duplicate-pipeline guard.</td></tr>
+        <tr><td><code>schedule</code>, <code>workflow_dispatch</code>, <code>release</code></td><td><code>$CI_PIPELINE_SOURCE</code> rules</td><td>Cron schedules are created in the UI; <code>inputs</code> become top-level <code>variables</code> with descriptions and options.</td></tr>
+        <tr><td><code>jobs.&lt;id&gt;</code> + <code>needs</code></td><td>jobs + <code>needs</code> (DAG)</td><td><code>stages</code> are derived from the dependency depth so the pipeline graph reads the same way.</td></tr>
+        <tr><td><code>runs-on: ubuntu-*</code></td><td><code>default: image</code></td><td>Pick the image in the options. Windows and macOS jobs get the gitlab.com SaaS runner tags; self-hosted labels become <code>tags</code>.</td></tr>
+        <tr><td><code>container</code>, <code>services</code></td><td><code>image</code>, <code>services</code></td><td>Service env becomes <code>variables</code>; <code>localhost:port</code> in the job is rewritten to the service alias.</td></tr>
+        <tr><td><code>strategy.matrix</code></td><td><code>parallel: matrix</code></td><td>Keys become upper-case variables; <code>include</code> rows are appended; object-valued dimensions are flattened; <code>runs-on: ${{ matrix.os }}</code> on Linux-only matrices is dropped.</td></tr>
+        <tr><td><code>if:</code> on jobs</td><td><code>rules: if</code></td><td><code>github.ref</code>, <code>github.event_name</code>, <code>startsWith</code>/<code>contains</code>, <code>inputs</code>, <code>env</code> and <code>secrets</code> comparisons; <code>always()</code> / <code>failure()</code> become <code>when</code>.</td></tr>
+        <tr><td><code>if:</code> on steps</td><td>shell <code>if</code> / <code>after_script</code></td><td><code>always()</code> and <code>failure()</code> steps move to <code>after_script</code>; other conditions become shell tests.</td></tr>
+        <tr><td><code>${{ secrets.X }}</code>, <code>${{ vars.X }}</code>, <code>${{ env.X }}</code></td><td><code>$X</code></td><td>The notes list every CI/CD variable to create (secrets masked).</td></tr>
+        <tr><td><code>${{ github.* }}</code>, <code>$GITHUB_*</code></td><td><code>$CI_*</code></td><td>40+ context values mapped: sha, ref, repository, run id, actor, workspace, PR number, head/base refs, commit message…</td></tr>
+        <tr><td><code>$GITHUB_OUTPUT</code>, <code>$GITHUB_ENV</code>, job <code>outputs</code></td><td><code>build.env</code> + <code>artifacts: reports: dotenv</code></td><td>Later jobs read the variables directly; <code>$GITHUB_PATH</code> becomes <code>export PATH</code>.</td></tr>
+        <tr><td><code>actions/upload-artifact</code> / <code>download-artifact</code></td><td><code>artifacts: paths</code> / <code>needs</code></td><td><code>retention-days</code> becomes <code>expire_in</code>; downloads become <code>needs</code> on the producing job.</td></tr>
+        <tr><td><code>actions/cache</code></td><td><code>cache: key: files</code></td><td><code>hashFiles()</code> keys become file-based keys; <code>restore-keys</code> become <code>fallback_keys</code>; <code>restore</code>/<code>save</code> become <code>policy</code>.</td></tr>
+        <tr><td><code>actions/setup-node|python|go|java|dotnet</code>, <code>ruby/setup-ruby</code>, Rust, PHP, Bun, Deno, Elixir, Flutter, Terraform…</td><td><code>image:</code></td><td>The job runs in the official image for that version; <code>cache: npm|pip|maven|gradle</code> becomes a <code>cache</code> block.</td></tr>
+        <tr><td><code>docker/login-action</code>, <code>setup-buildx</code>, <code>build-push-action</code></td><td><code>docker:27</code> + <code>dind</code> service</td><td><code>ghcr.io/owner/repo</code> becomes <code>$CI_REGISTRY_IMAGE</code>; GHA cache becomes a registry cache.</td></tr>
+        <tr><td><code>aws-actions/configure-aws-credentials</code>, <code>google-github-actions/auth</code>, <code>azure/login</code></td><td><code>id_tokens</code> + CLI login</td><td>OIDC roles become <code>GITLAB_OIDC_TOKEN</code> exchanges; static keys become CI/CD variables.</td></tr>
+        <tr><td><code>softprops/action-gh-release</code>, <code>ncipollo/release-action</code></td><td><code>release:</code></td><td>With the <code>release-cli</code> image and a tag rule; assets need package-registry links.</td></tr>
+        <tr><td><code>peaceiris/actions-gh-pages</code>, <code>actions/deploy-pages</code></td><td><code>pages</code> job</td><td>The output directory is moved to <code>public/</code>.</td></tr>
+        <tr><td>JUnit reporters, Codecov, Sonar, Slack, SSH deploys, PyPI/npm publish, semantic-release, GoReleaser, pre-commit, golangci-lint…</td><td>shell commands / <code>artifacts: reports</code></td><td>About 100 actions have a direct mapping; the rest become TODO steps with the inputs quoted.</td></tr>
+        <tr><td><code>github/codeql-action</code>, Trivy, TruffleHog, dependency review</td><td><code>include: template:</code></td><td>GitLab's SAST, Container Scanning, Secret Detection and Dependency Scanning templates.</td></tr>
+        <tr><td><code>concurrency</code>, <code>timeout-minutes</code>, <code>continue-on-error</code>, <code>environment</code></td><td><code>interruptible</code> / <code>resource_group</code>, <code>timeout</code>, <code>allow_failure</code>, <code>environment</code></td><td></td></tr>
+        <tr><td>Reusable workflows (<code>jobs.x.uses</code>)</td><td><code>trigger: include:</code></td><td>Child pipeline; convert the called workflow separately. Local composite actions become TODOs.</td></tr>
+        <tr><td><code>actions/stale</code>, labeler, release-drafter, Dependabot helpers</td><td>dropped with a note</td><td>Repository automation, not CI.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>The image.</strong> GitHub's <code>ubuntu-latest</code> has hundreds of tools preinstalled; <code>ubuntu:24.04</code> has almost none. Expect to add <code>apt-get install</code> lines, or pick a language image.</li>
+      <li><strong>Merge request pipelines.</strong> <code>pull_request</code> becomes <code>merge_request_event</code>; the duplicate-pipeline guard is included when the workflow also ran on push.</li>
+      <li><strong>Outputs between jobs</strong> travel as <code>dotenv</code> artifacts. The producing job must write <code>NAME=value</code> lines to <code>build.env</code>; the converter does that for <code>$GITHUB_OUTPUT</code> writes.</li>
+      <li><strong>Windows and macOS.</strong> gitlab.com SaaS runner tags are emitted; self-managed GitLab needs runners with those tags, and Windows jobs run PowerShell.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my workflow uploaded anywhere?</h3>
+    <p>No. The page is static and the converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/actions-gitlab.js" rel="noopener">actions-gitlab.js on GitHub</a>.</p>
+    <h3>Can I run it on every workflow in a repository?</h3>
+    <p>Yes: <code>npx jenkins-to-actions convert .github/workflows/ci.yml --to gitlab</code> prints the <code>.gitlab-ci.yml</code>; convert each workflow and combine them with <code>include: local:</code>.</p>
+    <h3>Why is the output valid but not identical in behaviour?</h3>
+    <p>The two systems differ in places that no converter can paper over: caches must live inside the project directory, services are reached by alias rather than localhost, and matrix rows cannot be extended. Each of those is called out in the notes with the fix.</p>
+
+    <h2>Going the other way?</h2>
+    <p>Every other page on this site converts <em>to</em> GitHub Actions: <a href="/">Jenkinsfile</a>, <a href="/gitlab-ci-to-github-actions/">GitLab CI</a>, <a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a>, <a href="/circleci-to-github-actions/">CircleCI</a>, <a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a> and <a href="/travis-ci-to-github-actions/">Travis CI</a>.</p>
+    <h2>Migrating a whole organisation?</h2>
+    <p>The same converters ship as a command-line audit. Point it at a GitHub organisation, a GitLab group, an Azure DevOps organisation, a Bitbucket workspace or a Jenkins server and it inventories every CI configuration it finds, converts what it can, estimates the effort per repository and lists the secrets to create. With <code>--open-prs</code> it opens a pull request in each GitHub repository with the workflow and the notes. Nothing is sent anywhere except the platform you point it at.</p>
+    <pre class="out" style="min-height:0;white-space:pre-wrap">GITHUB_TOKEN=… npx jenkins-to-actions audit --github-org acme          # report + workflows
+GITHUB_TOKEN=… npx jenkins-to-actions audit --github-org acme --open-prs   # one PR per repository
+GITLAB_TOKEN=… npx jenkins-to-actions audit --gitlab-group acme/platform
+AZURE_DEVOPS_TOKEN=… npx jenkins-to-actions audit --azure-org acme
+npx jenkins-to-actions audit --bitbucket-workspace acme --user me --token APP_PASSWORD
+npx jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN</pre>
+    <p>See a real result: <a href="https://github.com/Huckcity/ci-migration-demo/pull/1" rel="noopener">this pull request</a> was opened by one command on a repository holding one config per system. The <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a> has the details, and <a href="/migration/">the migration page</a> describes the fixed-fee audit if you would rather have it done for you. Once you are on Actions, the <a href="/actions-cost-calculator/">cost calculator</a> and the free <a href="https://github.com/marketplace/actions/ci-cost-report" rel="noopener">CI Cost Report</a> action show what the minutes cost.</p>
+  </article>
+</main>
+<footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>
+<script type="module" src="/app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c4095c97d0ac46a391f809b82400b69f"}'></script>
+</body>
+</html>

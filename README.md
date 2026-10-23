@@ -13,6 +13,14 @@ Move to GitHub Actions from **Jenkins, GitLab CI, Azure Pipelines, CircleCI, Bit
 
 The source system is detected from the file name or content; force it with `--from gitlab|azure|circleci|bitbucket|travis|jenkins`.
 
+And the other direction, for teams leaving GitHub:
+
+| From | Web | CLI |
+|---|---|---|
+| GitHub Actions → GitLab CI | https://ci2actions.dev/github-actions-to-gitlab-ci/ | `npx jenkins-to-actions convert .github/workflows/ci.yml --to gitlab` |
+
+Jobs, `needs`, triggers, matrix, secrets, artifacts, caches, services and about 100 Marketplace actions are mapped to GitLab keywords and commands; the output is checked against GitLab's own CI schema in the tests.
+
 ## Audit a whole estate, open the pull requests
 
 One command inventories every CI configuration in an organisation, converts what it can, estimates the effort per repository, and (optionally) opens a pull request in each GitHub repository with the workflow and the notes:

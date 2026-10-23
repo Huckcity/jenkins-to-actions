@@ -1,0 +1,49 @@
+    <h2>What this converter does</h2>
+    <p>Paste a GitHub Actions workflow and you get a <code>.gitlab-ci.yml</code> plus a list of everything that did not map cleanly. It is the same idea as the other converters on this site, run the other way: for teams moving from GitHub to GitLab (gitlab.com or self-managed), or keeping both. Conversion runs entirely in your browser; nothing is uploaded.</p>
+    <p>The output is a starting point, not a finished migration. Marketplace actions become the shell commands or GitLab keywords that replace them; anything without a clean equivalent becomes a <code>TODO</code> step that fails loudly, and the notes list the CI/CD variables you need to create.</p>
+
+    <h2>How GitHub Actions concepts map to GitLab CI</h2>
+    <table>
+      <thead><tr><th>GitHub Actions</th><th>GitLab CI</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>on: push / pull_request / tags</code></td><td><code>workflow: rules</code></td><td>Branch and tag filters become <code>$CI_COMMIT_BRANCH</code> / <code>$CI_COMMIT_TAG</code> rules; <code>paths</code> becomes <code>changes</code>. Push + pull_request gets the standard duplicate-pipeline guard.</td></tr>
+        <tr><td><code>schedule</code>, <code>workflow_dispatch</code>, <code>release</code></td><td><code>$CI_PIPELINE_SOURCE</code> rules</td><td>Cron schedules are created in the UI; <code>inputs</code> become top-level <code>variables</code> with descriptions and options.</td></tr>
+        <tr><td><code>jobs.&lt;id&gt;</code> + <code>needs</code></td><td>jobs + <code>needs</code> (DAG)</td><td><code>stages</code> are derived from the dependency depth so the pipeline graph reads the same way.</td></tr>
+        <tr><td><code>runs-on: ubuntu-*</code></td><td><code>default: image</code></td><td>Pick the image in the options. Windows and macOS jobs get the gitlab.com SaaS runner tags; self-hosted labels become <code>tags</code>.</td></tr>
+        <tr><td><code>container</code>, <code>services</code></td><td><code>image</code>, <code>services</code></td><td>Service env becomes <code>variables</code>; <code>localhost:port</code> in the job is rewritten to the service alias.</td></tr>
+        <tr><td><code>strategy.matrix</code></td><td><code>parallel: matrix</code></td><td>Keys become upper-case variables; <code>include</code> rows are appended; object-valued dimensions are flattened; <code>runs-on: ${{ matrix.os }}</code> on Linux-only matrices is dropped.</td></tr>
+        <tr><td><code>if:</code> on jobs</td><td><code>rules: if</code></td><td><code>github.ref</code>, <code>github.event_name</code>, <code>startsWith</code>/<code>contains</code>, <code>inputs</code>, <code>env</code> and <code>secrets</code> comparisons; <code>always()</code> / <code>failure()</code> become <code>when</code>.</td></tr>
+        <tr><td><code>if:</code> on steps</td><td>shell <code>if</code> / <code>after_script</code></td><td><code>always()</code> and <code>failure()</code> steps move to <code>after_script</code>; other conditions become shell tests.</td></tr>
+        <tr><td><code>${{ secrets.X }}</code>, <code>${{ vars.X }}</code>, <code>${{ env.X }}</code></td><td><code>$X</code></td><td>The notes list every CI/CD variable to create (secrets masked).</td></tr>
+        <tr><td><code>${{ github.* }}</code>, <code>$GITHUB_*</code></td><td><code>$CI_*</code></td><td>40+ context values mapped: sha, ref, repository, run id, actor, workspace, PR number, head/base refs, commit message…</td></tr>
+        <tr><td><code>$GITHUB_OUTPUT</code>, <code>$GITHUB_ENV</code>, job <code>outputs</code></td><td><code>build.env</code> + <code>artifacts: reports: dotenv</code></td><td>Later jobs read the variables directly; <code>$GITHUB_PATH</code> becomes <code>export PATH</code>.</td></tr>
+        <tr><td><code>actions/upload-artifact</code> / <code>download-artifact</code></td><td><code>artifacts: paths</code> / <code>needs</code></td><td><code>retention-days</code> becomes <code>expire_in</code>; downloads become <code>needs</code> on the producing job.</td></tr>
+        <tr><td><code>actions/cache</code></td><td><code>cache: key: files</code></td><td><code>hashFiles()</code> keys become file-based keys; <code>restore-keys</code> become <code>fallback_keys</code>; <code>restore</code>/<code>save</code> become <code>policy</code>.</td></tr>
+        <tr><td><code>actions/setup-node|python|go|java|dotnet</code>, <code>ruby/setup-ruby</code>, Rust, PHP, Bun, Deno, Elixir, Flutter, Terraform…</td><td><code>image:</code></td><td>The job runs in the official image for that version; <code>cache: npm|pip|maven|gradle</code> becomes a <code>cache</code> block.</td></tr>
+        <tr><td><code>docker/login-action</code>, <code>setup-buildx</code>, <code>build-push-action</code></td><td><code>docker:27</code> + <code>dind</code> service</td><td><code>ghcr.io/owner/repo</code> becomes <code>$CI_REGISTRY_IMAGE</code>; GHA cache becomes a registry cache.</td></tr>
+        <tr><td><code>aws-actions/configure-aws-credentials</code>, <code>google-github-actions/auth</code>, <code>azure/login</code></td><td><code>id_tokens</code> + CLI login</td><td>OIDC roles become <code>GITLAB_OIDC_TOKEN</code> exchanges; static keys become CI/CD variables.</td></tr>
+        <tr><td><code>softprops/action-gh-release</code>, <code>ncipollo/release-action</code></td><td><code>release:</code></td><td>With the <code>release-cli</code> image and a tag rule; assets need package-registry links.</td></tr>
+        <tr><td><code>peaceiris/actions-gh-pages</code>, <code>actions/deploy-pages</code></td><td><code>pages</code> job</td><td>The output directory is moved to <code>public/</code>.</td></tr>
+        <tr><td>JUnit reporters, Codecov, Sonar, Slack, SSH deploys, PyPI/npm publish, semantic-release, GoReleaser, pre-commit, golangci-lint…</td><td>shell commands / <code>artifacts: reports</code></td><td>About 100 actions have a direct mapping; the rest become TODO steps with the inputs quoted.</td></tr>
+        <tr><td><code>github/codeql-action</code>, Trivy, TruffleHog, dependency review</td><td><code>include: template:</code></td><td>GitLab's SAST, Container Scanning, Secret Detection and Dependency Scanning templates.</td></tr>
+        <tr><td><code>concurrency</code>, <code>timeout-minutes</code>, <code>continue-on-error</code>, <code>environment</code></td><td><code>interruptible</code> / <code>resource_group</code>, <code>timeout</code>, <code>allow_failure</code>, <code>environment</code></td><td></td></tr>
+        <tr><td>Reusable workflows (<code>jobs.x.uses</code>)</td><td><code>trigger: include:</code></td><td>Child pipeline; convert the called workflow separately. Local composite actions become TODOs.</td></tr>
+        <tr><td><code>actions/stale</code>, labeler, release-drafter, Dependabot helpers</td><td>dropped with a note</td><td>Repository automation, not CI.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Things to check by hand</h2>
+    <ul>
+      <li><strong>The image.</strong> GitHub's <code>ubuntu-latest</code> has hundreds of tools preinstalled; <code>ubuntu:24.04</code> has almost none. Expect to add <code>apt-get install</code> lines, or pick a language image.</li>
+      <li><strong>Merge request pipelines.</strong> <code>pull_request</code> becomes <code>merge_request_event</code>; the duplicate-pipeline guard is included when the workflow also ran on push.</li>
+      <li><strong>Outputs between jobs</strong> travel as <code>dotenv</code> artifacts. The producing job must write <code>NAME=value</code> lines to <code>build.env</code>; the converter does that for <code>$GITHUB_OUTPUT</code> writes.</li>
+      <li><strong>Windows and macOS.</strong> gitlab.com SaaS runner tags are emitted; self-managed GitLab needs runners with those tags, and Windows jobs run PowerShell.</li>
+    </ul>
+
+    <h2>FAQ</h2>
+    <h3>Is my workflow uploaded anywhere?</h3>
+    <p>No. The page is static and the converter runs in your tab. Read <a href="https://github.com/Huckcity/jenkins-to-actions/blob/main/public/converters/actions-gitlab.js" rel="noopener">actions-gitlab.js on GitHub</a>.</p>
+    <h3>Can I run it on every workflow in a repository?</h3>
+    <p>Yes: <code>npx jenkins-to-actions convert .github/workflows/ci.yml --to gitlab</code> prints the <code>.gitlab-ci.yml</code>; convert each workflow and combine them with <code>include: local:</code>.</p>
+    <h3>Why is the output valid but not identical in behaviour?</h3>
+    <p>The two systems differ in places that no converter can paper over: caches must live inside the project directory, services are reached by alias rather than localhost, and matrix rows cannot be extended. Each of those is called out in the notes with the fix.</p>

@@ -60,6 +60,17 @@ export const PAGES = [
     placeholder: "language: node_js\nnode_js:\n  - 18\n  - 20\nscript:\n  - npm test",
     doc: doc('travis'),
   },
+  {
+    source: 'actions-gitlab', path: '/github-actions-to-gitlab-ci/', slug: 'github-actions-to-gitlab-ci', h1: 'GitHub Actions', target: 'GitLab CI', inputLabel: '.github/workflows/ci.yml', outputLabel: '.gitlab-ci.yml', downloadLabel: 'Download .gitlab-ci.yml',
+    title: 'GitHub Actions to GitLab CI converter',
+    ogTitle: 'GitHub Actions → GitLab CI converter',
+    description: 'Paste a GitHub Actions workflow, get a .gitlab-ci.yml. Jobs, needs, matrix, triggers, secrets, artifacts, caches, services and about 100 Marketplace actions are mapped to GitLab CI keywords and commands. Runs in your browser.',
+    examples: [['github-actions.yml', 'Node app: matrix, services, Docker, AWS OIDC deploy, release']],
+    options: '    <label>Default image\n      <select id="image">\n        <option>ubuntu:24.04</option><option>ubuntu:22.04</option><option>debian:bookworm-slim</option><option>alpine:3.20</option><option>node:22</option><option>python:3.12</option><option>golang:1.23</option><option>eclipse-temurin:21</option>\n      </select>\n    </label>',
+    placeholder: "name: CI\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n      - run: npm ci\n      - run: npm test",
+    doc: doc('actions-gitlab'),
+    tail: '    <h2>Going the other way?</h2>\n    <p>Every other page on this site converts <em>to</em> GitHub Actions: <a href="/">Jenkinsfile</a>, <a href="/gitlab-ci-to-github-actions/">GitLab CI</a>, <a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a>, <a href="/circleci-to-github-actions/">CircleCI</a>, <a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a> and <a href="/travis-ci-to-github-actions/">Travis CI</a>.</p>',
+  },
 ];
 
 // Pages that are not converters; body in site/<slug>.html
