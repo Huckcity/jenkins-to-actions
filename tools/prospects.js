@@ -139,10 +139,12 @@ function status(r) {
 
 // ------------------------------------------------------------ 3. rank organisations
 const WEIGHT = { migrating: 3, jenkins: 2, 'jenkins+old-workflows': 1.5, finishing: 0.5, stale: 0 };
+// Organisations that are never a prospect: Jenkins itself, foundations that host hundreds of unrelated projects, template users.
+const EXCLUDE = new Set(['jenkinsci', 'jenkins-infra', 'cloudbees', 'apache', 'linuxserver', 'eclipse', 'eclipse-ee4j', 'microsoft', 'google', 'googlecloudplatform', 'aws', 'cncf', 'kubernetes', 'gradle', 'ibm', 'oracle', 'redhat-developer', 'openshift', ...String(args.exclude || '').split(',').filter(Boolean)]);
 async function rank(repos) {
   const orgs = {};
   for (const r of Object.values(repos)) {
-    if (r.skip || !r.status || r.status === 'stale') continue;
+    if (r.skip || !r.status || r.status === 'stale' || EXCLUDE.has(r.owner.toLowerCase())) continue;
     const o = orgs[r.owner] || (orgs[r.owner] = { org: r.owner, repos: [], score: 0 });
     o.repos.push(r);
     o.score += WEIGHT[r.status] * (1 + Math.log10(1 + (r.stars || 0)) / 2);
