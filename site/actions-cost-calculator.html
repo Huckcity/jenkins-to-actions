@@ -1,0 +1,62 @@
+<main class="offer calc">
+  <section class="hero">
+    <h1>GitHub Actions cost calculator</h1>
+    <p class="lede">Work out what your CI minutes cost on GitHub-hosted runners, after the included minutes and the Windows and macOS multipliers, and what they would cost on larger or self-hosted runners. Runs in your browser; nothing is sent anywhere.</p>
+  </section>
+
+  <section class="calc-grid">
+    <form class="tier" id="calc" onsubmit="return false">
+      <h2>Your usage per month</h2>
+      <label>Plan
+        <select id="plan">
+          <option value="free">Free (2,000 included minutes)</option>
+          <option value="pro">Pro (3,000 included minutes)</option>
+          <option value="team" selected>Team (3,000 included minutes)</option>
+          <option value="enterprise">Enterprise Cloud (50,000 included minutes)</option>
+        </select>
+      </label>
+      <label>Repository visibility
+        <select id="visibility">
+          <option value="private" selected>Private or internal (minutes are billed)</option>
+          <option value="public">Public (standard runners are free)</option>
+        </select>
+      </label>
+      <div class="rows" id="rows">
+        <div class="row head"><span>Runner</span><span>Minutes / month</span><span></span></div>
+      </div>
+      <button type="button" id="add" class="btn">Add a runner type</button>
+      <p class="small">Don't know your minutes? The free <a href="https://github.com/marketplace/actions/ci-cost-report" rel="noopener">CI Cost Report</a> action reads them from your repository and posts a weekly breakdown, or look under Settings → Billing → Usage.</p>
+    </form>
+
+    <div class="tier featured">
+      <h2>Estimated monthly bill</h2>
+      <p class="price" id="total">$0</p>
+      <table class="result" id="result"></table>
+      <p class="small" id="note"></p>
+      <h3>Same minutes elsewhere</h3>
+      <table class="result" id="alt"></table>
+      <p class="small">Self-hosted runners cost nothing per minute on GitHub, but the machines do. A dedicated 2-vCPU cloud VM runs at roughly $0.001 to $0.002 a minute flat out, and much more per useful minute when it sits idle; autoscaled runners (actions-runner-controller, Philips' Terraform module, Cirun, RunsOn and the like) get closer to the hosted price curve with less idle time.</p>
+    </div>
+  </section>
+
+  <article class="doc">
+    <h2>How GitHub Actions billing works</h2>
+    <ul>
+      <li><strong>Public repositories</strong> run free on GitHub's standard runners (Linux, Windows, macOS, and the 2- and 4-core Arm Linux runners). Larger runners are billed in every repository.</li>
+      <li><strong>Included minutes</strong> come with the plan (Free 2,000, Pro 3,000, Team 3,000, Enterprise 50,000 a month) and apply to standard runners on private repositories. Each Windows minute consumes <strong>2</strong> included minutes and each macOS minute <strong>10</strong>, which is why a modest iOS build eats a whole Team plan allowance.</li>
+      <li><strong>Overage</strong> is charged per minute at list price: Linux 2-core $0.008, Windows 2-core $0.016, macOS $0.08 (and $0.12 to $0.16 for the large macOS runners). Larger Linux and Windows runners scale roughly linearly with cores.</li>
+      <li><strong>Every job is rounded up</strong> to the next whole minute. Ten one-second jobs cost ten minutes.</li>
+      <li><strong>Storage</strong> for artifacts and caches beyond the included amount is billed separately at $0.008 per GB-day (not in this calculator).</li>
+    </ul>
+    <h2>Cheapest wins, in order</h2>
+    <ol>
+      <li>Add <code>concurrency</code> with <code>cancel-in-progress: true</code> to pull-request workflows so superseded runs stop.</li>
+      <li>Move anything that doesn't need macOS or Windows to Linux; one macOS minute costs ten Linux minutes.</li>
+      <li>Merge jobs that run under a minute; rounding on tiny jobs is often 20 to 40 percent of a bill.</li>
+      <li>Cache dependencies (<code>actions/cache</code>, <code>setup-*</code> with <code>cache:</code>) and skip scheduled runs when nothing changed.</li>
+      <li>Only then look at larger runners (faster, often cheaper per build when a job is CPU-bound) or self-hosted.</li>
+    </ol>
+    <p>Prices are GitHub's published list prices as of 2026 and are repeated here for estimating only; check <a href="https://docs.github.com/en/billing/managing-billing-for-your-products/about-billing-for-github-actions" rel="noopener">GitHub's billing documentation</a> before relying on a number. Negotiated Enterprise pricing differs.</p>
+  </article>
+</main>
+<script src="/calc.js"></script>

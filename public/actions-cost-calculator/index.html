@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub Actions cost calculator: minutes, multipliers, included minutes and larger runners</title>
+<meta name="description" content="Estimate your monthly GitHub Actions bill from minutes per runner type, with the plan's included minutes, the Windows ×2 and macOS ×10 multipliers, larger runners and a self-hosted comparison. Runs in your browser.">
+<link rel="canonical" href="https://ci2actions.dev/actions-cost-calculator/">
+<meta property="og:title" content="GitHub Actions cost calculator">
+<meta property="og:description" content="Estimate your monthly GitHub Actions bill from minutes per runner type, with the plan's included minutes, the Windows ×2 and macOS ×10 multipliers, larger runners and a self-hosted comparison. Runs in your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d33833'/%3E%3Cpath d='M8 16h12M15 10l6 6-6 6' stroke='%23fff' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1b1f24;--muted:#5b6470;--line:#d9dee5;--accent:#1f6feb;--accent-ink:#fff;--warn-bg:#fff6e0;--warn-line:#f0c36d;--code-bg:#0f1419;--code-ink:#e6edf3;--ok:#1a7f37}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#161b22;--ink:#e6edf3;--muted:#8b949e;--line:#30363d;--accent:#2f81f7;--warn-bg:#2b2111;--warn-line:#7a5a1e;--code-bg:#0a0d12;--code-ink:#e6edf3;--ok:#3fb950}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+header h1{font-size:1.1rem;margin:0;font-weight:650;letter-spacing:-.01em}
+header h1 span{color:var(--muted);font-weight:400}
+.actions{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+button,select,input[type=text]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.4rem .7rem}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:hover{border-color:var(--accent)}
+main{max-width:1400px;margin:0 auto;padding:1rem}
+.opts{display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;margin:0 0 .8rem;font-size:.92rem;color:var(--muted)}
+.opts label{display:flex;gap:.35rem;align-items:center}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.pane{display:flex;flex-direction:column;min-height:60vh;min-width:0}
+.grid{min-width:0}
+.pane .bar{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted);margin-bottom:.35rem}
+textarea,pre.out{flex:1;width:100%;max-width:100%;min-height:55vh;margin:0;padding:.8rem;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);color:var(--code-ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;resize:vertical}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+pre.out .c{color:#8b949e}pre.out .k{color:#79c0ff}pre.out .s{color:#a5d6ff}pre.out .t{color:#ffa657}
+.notes{margin:1rem 0 0;background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.8rem 1rem}
+.notes h2{font-size:.95rem;margin:0 0 .4rem}
+.notes ul{margin:0;padding-left:1.2rem}
+.notes li{margin:.25rem 0}
+.notes code,.doc code{background:rgba(127,127,127,.15);padding:.05em .3em;border-radius:4px;font-size:.9em}
+.notes.ok{background:transparent;border-color:var(--ok)}
+.support{margin:1.5rem 0;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.9rem 1rem}
+.support p{margin:0}
+.support .btns{display:flex;gap:.5rem;flex-wrap:wrap}
+.support a.btn,.tier a.btn{display:inline-block;text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:.4rem .8rem;color:var(--ink);background:var(--bg)}
+.support a.btn.primary,.tier a.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.doc{max-width:860px;margin:2rem auto 3rem;color:var(--ink)}
+.doc h2{font-size:1.25rem;margin:1.8rem 0 .6rem}
+.doc h3{font-size:1.02rem;margin:1.2rem 0 .4rem}
+.doc table{border-collapse:collapse;width:100%;font-size:.92rem}
+.doc th,.doc td{text-align:left;border-bottom:1px solid var(--line);padding:.4rem .5rem;vertical-align:top}
+.doc th{color:var(--muted);font-weight:600}
+.sources{max-width:860px;margin:1.5rem auto 0;font-size:.9rem;color:var(--muted);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}.sources a{white-space:nowrap}.sources a.current{color:var(--ink);font-weight:600;text-decoration:none}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem;border-top:1px solid var(--line)}
+.sr{position:absolute;left:-9999px}
+.offer{max-width:1100px}
+.offer .hero{text-align:center;margin:1.5rem auto 2rem;max-width:760px}
+.offer .hero h1{font-size:2rem;line-height:1.15;letter-spacing:-.02em;margin:0 0 .8rem}
+.offer .lede{color:var(--muted);font-size:1.08rem;margin:0}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;align-items:stretch}
+.tier{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.2rem 1.3rem;display:flex;flex-direction:column;min-width:0}
+.tier.featured{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,111,235,.12)}
+.tier h2{margin:0 0 .2rem;font-size:1.15rem}
+.tier .price{font-size:1.6rem;font-weight:700;margin:.2rem 0 .8rem;letter-spacing:-.02em}
+.tier .price span{font-size:.9rem;font-weight:500;color:var(--muted)}
+.tier ul{padding-left:1.1rem;margin:.4rem 0 1rem}
+.tier li{margin:.35rem 0}
+.tier p{margin:.3rem 0}
+.tier .small{color:var(--muted);font-size:.9rem}
+.tier .btn{margin-top:auto;text-align:center;padding:.6rem 1rem;font-weight:600}
+.offer .doc ol li{margin:.5rem 0}
+.header-link{color:var(--muted);font-size:.9rem;text-decoration:none;border:1px solid var(--line);padding:.3rem .6rem;border-radius:999px}
+.header-link:hover{border-color:var(--accent);color:var(--accent)}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+@media (max-width:860px){.calc-grid{grid-template-columns:1fr}}
+.calc label{display:block;margin:.5rem 0;font-size:.92rem;color:var(--muted)}
+.calc label select{display:block;width:100%;margin-top:.25rem;padding:.45rem .5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.calc .rows{margin:.8rem 0 .5rem}
+.calc .row{display:grid;grid-template-columns:1fr 120px 32px;gap:.4rem;align-items:center;margin:.35rem 0}
+.calc .row.head{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.calc .row select,.calc .row input{padding:.4rem .5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;min-width:0}
+.calc .row .rm{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;height:32px;cursor:pointer}
+.calc table.result{width:100%;border-collapse:collapse;font-size:.9rem;margin:.4rem 0 1rem}
+.calc table.result th,.calc table.result td{text-align:left;padding:.35rem .4rem;border-bottom:1px solid var(--line);vertical-align:top}
+.calc table.result td:not(:first-child){text-align:right;white-space:nowrap}
+.calc .muted{color:var(--muted);font-size:.82rem}
+.calc .tier .price{font-size:2.2rem}
+.calc .tier h3{margin:.8rem 0 .2rem;font-size:1rem}
+</style>
+</head>
+<body>
+<header><h1><a href="/" style="color:inherit;text-decoration:none">ci2actions.dev</a> <span>CI → GitHub Actions</span></h1><nav class="sources" aria-label="Converters"><span>Convert from:</span><a href="/">Jenkinsfile</a><span aria-hidden="true">·</span><a href="/gitlab-ci-to-github-actions/">GitLab CI</a><span aria-hidden="true">·</span><a href="/azure-pipelines-to-github-actions/">Azure Pipelines</a><span aria-hidden="true">·</span><a href="/circleci-to-github-actions/">CircleCI</a><span aria-hidden="true">·</span><a href="/bitbucket-pipelines-to-github-actions/">Bitbucket Pipelines</a><span aria-hidden="true">·</span><a href="/travis-ci-to-github-actions/">Travis CI</a></nav></header>
+<main class="offer calc">
+  <section class="hero">
+    <h1>GitHub Actions cost calculator</h1>
+    <p class="lede">Work out what your CI minutes cost on GitHub-hosted runners, after the included minutes and the Windows and macOS multipliers, and what they would cost on larger or self-hosted runners. Runs in your browser; nothing is sent anywhere.</p>
+  </section>
+
+  <section class="calc-grid">
+    <form class="tier" id="calc" onsubmit="return false">
+      <h2>Your usage per month</h2>
+      <label>Plan
+        <select id="plan">
+          <option value="free">Free (2,000 included minutes)</option>
+          <option value="pro">Pro (3,000 included minutes)</option>
+          <option value="team" selected>Team (3,000 included minutes)</option>
+          <option value="enterprise">Enterprise Cloud (50,000 included minutes)</option>
+        </select>
+      </label>
+      <label>Repository visibility
+        <select id="visibility">
+          <option value="private" selected>Private or internal (minutes are billed)</option>
+          <option value="public">Public (standard runners are free)</option>
+        </select>
+      </label>
+      <div class="rows" id="rows">
+        <div class="row head"><span>Runner</span><span>Minutes / month</span><span></span></div>
+      </div>
+      <button type="button" id="add" class="btn">Add a runner type</button>
+      <p class="small">Don't know your minutes? The free <a href="https://github.com/marketplace/actions/ci-cost-report" rel="noopener">CI Cost Report</a> action reads them from your repository and posts a weekly breakdown, or look under Settings → Billing → Usage.</p>
+    </form>
+
+    <div class="tier featured">
+      <h2>Estimated monthly bill</h2>
+      <p class="price" id="total">$0</p>
+      <table class="result" id="result"></table>
+      <p class="small" id="note"></p>
+      <h3>Same minutes elsewhere</h3>
+      <table class="result" id="alt"></table>
+      <p class="small">Self-hosted runners cost nothing per minute on GitHub, but the machines do. A dedicated 2-vCPU cloud VM runs at roughly $0.001 to $0.002 a minute flat out, and much more per useful minute when it sits idle; autoscaled runners (actions-runner-controller, Philips' Terraform module, Cirun, RunsOn and the like) get closer to the hosted price curve with less idle time.</p>
+    </div>
+  </section>
+
+  <article class="doc">
+    <h2>How GitHub Actions billing works</h2>
+    <ul>
+      <li><strong>Public repositories</strong> run free on GitHub's standard runners (Linux, Windows, macOS, and the 2- and 4-core Arm Linux runners). Larger runners are billed in every repository.</li>
+      <li><strong>Included minutes</strong> come with the plan (Free 2,000, Pro 3,000, Team 3,000, Enterprise 50,000 a month) and apply to standard runners on private repositories. Each Windows minute consumes <strong>2</strong> included minutes and each macOS minute <strong>10</strong>, which is why a modest iOS build eats a whole Team plan allowance.</li>
+      <li><strong>Overage</strong> is charged per minute at list price: Linux 2-core $0.008, Windows 2-core $0.016, macOS $0.08 (and $0.12 to $0.16 for the large macOS runners). Larger Linux and Windows runners scale roughly linearly with cores.</li>
+      <li><strong>Every job is rounded up</strong> to the next whole minute. Ten one-second jobs cost ten minutes.</li>
+      <li><strong>Storage</strong> for artifacts and caches beyond the included amount is billed separately at $0.008 per GB-day (not in this calculator).</li>
+    </ul>
+    <h2>Cheapest wins, in order</h2>
+    <ol>
+      <li>Add <code>concurrency</code> with <code>cancel-in-progress: true</code> to pull-request workflows so superseded runs stop.</li>
+      <li>Move anything that doesn't need macOS or Windows to Linux; one macOS minute costs ten Linux minutes.</li>
+      <li>Merge jobs that run under a minute; rounding on tiny jobs is often 20 to 40 percent of a bill.</li>
+      <li>Cache dependencies (<code>actions/cache</code>, <code>setup-*</code> with <code>cache:</code>) and skip scheduled runs when nothing changed.</li>
+      <li>Only then look at larger runners (faster, often cheaper per build when a job is CPU-bound) or self-hosted.</li>
+    </ol>
+    <p>Prices are GitHub's published list prices as of 2026 and are repeated here for estimating only; check <a href="https://docs.github.com/en/billing/managing-billing-for-your-products/about-billing-for-github-actions" rel="noopener">GitHub's billing documentation</a> before relying on a number. Negotiated Enterprise pricing differs.</p>
+  </article>
+</main>
+<script src="/calc.js"></script>
+<footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "c4095c97d0ac46a391f809b82400b69f"}'></script>
+</body>
+</html>

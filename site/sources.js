@@ -64,5 +64,6 @@ export const PAGES = [
 
 // Pages that are not converters; body in site/<slug>.html
 export const STATIC_PAGES = [
+  { slug: 'actions-cost-calculator', path: '/actions-cost-calculator/', title: 'GitHub Actions cost calculator: minutes, multipliers, included minutes and larger runners', ogTitle: 'GitHub Actions cost calculator', description: 'Estimate your monthly GitHub Actions bill from minutes per runner type, with the plan\'s included minutes, the Windows ×2 and macOS ×10 multipliers, larger runners and a self-hosted comparison. Runs in your browser.' },
   { slug: 'migration', path: '/migration/', title: 'CI migration to GitHub Actions: audit and done-for-you service', ogTitle: 'CI → GitHub Actions migration service', description: 'Fixed-fee estate audit (£490) and done-for-you migrations from Jenkins, GitLab CI, Azure Pipelines, CircleCI, Bitbucket Pipelines or Travis CI to GitHub Actions, by the author of the free converters.' },
 ];

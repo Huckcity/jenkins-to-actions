@@ -73,6 +73,21 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:1.5rem 1rem
 .offer .doc ol li{margin:.5rem 0}
 .header-link{color:var(--muted);font-size:.9rem;text-decoration:none;border:1px solid var(--line);padding:.3rem .6rem;border-radius:999px}
 .header-link:hover{border-color:var(--accent);color:var(--accent)}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+@media (max-width:860px){.calc-grid{grid-template-columns:1fr}}
+.calc label{display:block;margin:.5rem 0;font-size:.92rem;color:var(--muted)}
+.calc label select{display:block;width:100%;margin-top:.25rem;padding:.45rem .5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.calc .rows{margin:.8rem 0 .5rem}
+.calc .row{display:grid;grid-template-columns:1fr 120px 32px;gap:.4rem;align-items:center;margin:.35rem 0}
+.calc .row.head{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.calc .row select,.calc .row input{padding:.4rem .5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;min-width:0}
+.calc .row .rm{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;height:32px;cursor:pointer}
+.calc table.result{width:100%;border-collapse:collapse;font-size:.9rem;margin:.4rem 0 1rem}
+.calc table.result th,.calc table.result td{text-align:left;padding:.35rem .4rem;border-bottom:1px solid var(--line);vertical-align:top}
+.calc table.result td:not(:first-child){text-align:right;white-space:nowrap}
+.calc .muted{color:var(--muted);font-size:.82rem}
+.calc .tier .price{font-size:2.2rem}
+.calc .tier h3{margin:.8rem 0 .2rem;font-size:1rem}
 </style>
 </head>
 <body data-source="travis">
@@ -169,7 +184,7 @@ GITLAB_TOKEN=… npx jenkins-to-actions audit --gitlab-group acme/platform
 AZURE_DEVOPS_TOKEN=… npx jenkins-to-actions audit --azure-org acme
 npx jenkins-to-actions audit --bitbucket-workspace acme --user me --token APP_PASSWORD
 npx jenkins-to-actions audit --url https://jenkins.example.com --user me --token APITOKEN</pre>
-    <p>See a real result: <a href="https://github.com/Huckcity/ci-migration-demo/pull/1" rel="noopener">this pull request</a> was opened by one command on a repository holding one config per system. The <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a> has the details, and <a href="/migration/">the migration page</a> describes the fixed-fee audit if you would rather have it done for you.</p>
+    <p>See a real result: <a href="https://github.com/Huckcity/ci-migration-demo/pull/1" rel="noopener">this pull request</a> was opened by one command on a repository holding one config per system. The <a href="https://github.com/Huckcity/jenkins-to-actions#readme" rel="noopener">README</a> has the details, and <a href="/migration/">the migration page</a> describes the fixed-fee audit if you would rather have it done for you. Once you are on Actions, the <a href="/actions-cost-calculator/">cost calculator</a> and the free <a href="https://github.com/marketplace/actions/ci-cost-report" rel="noopener">CI Cost Report</a> action show what the minutes cost.</p>
   </article>
 </main>
 <footer>Built by Adam Gibbons, a lead DevOps engineer who has run both Jenkins and GitHub Actions in anger. No cookies; only Cloudflare Web Analytics, which is cookieless.</footer>
