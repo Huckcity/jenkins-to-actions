@@ -97,13 +97,13 @@ test('github crawl lists the tree and finds CI configs outside the root', async 
     ['GET /repos/acme/mono', { full_name: 'acme/mono', html_url: 'https://github.com/acme/mono', default_branch: 'main' }],
     ['GET /repos/acme/mono/git/trees/main', { truncated: false, tree: [
       { type: 'blob', path: 'README.md' }, { type: 'blob', path: '.jenkins/Jenkinsfile' }, { type: 'blob', path: 'build/Jenkins/nightly.jenkinsfile' },
-      { type: 'blob', path: '.azure-pipelines/release.yml' }, { type: 'blob', path: 'test/fixtures/Jenkinsfile' }, { type: 'tree', path: 'Jenkinsfile' }, { type: 'blob', path: 'node_modules/x/.travis.yml' },
+      { type: 'blob', path: '.azure-pipelines/release.yml' }, { type: 'blob', path: 'Jenkinsfile_CNP' }, { type: 'blob', path: 'test/fixtures/Jenkinsfile' }, { type: 'tree', path: 'Jenkinsfile' }, { type: 'blob', path: 'node_modules/x/.travis.yml' },
     ] }],
     [/^GET \/repos\/acme\/mono\/contents\//, fx('scripted.Jenkinsfile')],
   ]);
   const est = await fromGithub({ org: null, token: 't', repos: ['acme/mono'] });
-  assert.deepEqual(est.items.map((i) => i.path), ['.azure-pipelines/release.yml', '.jenkins/Jenkinsfile', 'build/Jenkins/nightly.jenkinsfile']);
-  assert.deepEqual(est.items.map((i) => i.system), ['azure', 'jenkins', 'jenkins']);
+  assert.deepEqual(est.items.map((i) => i.path), ['Jenkinsfile_CNP', '.azure-pipelines/release.yml', '.jenkins/Jenkinsfile', 'build/Jenkins/nightly.jenkinsfile']);
+  assert.deepEqual(est.items.map((i) => i.system), ['jenkins', 'azure', 'jenkins', 'jenkins']);
   assert.equal(est.source, 'GitHub acme');
 });
 

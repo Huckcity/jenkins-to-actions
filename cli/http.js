@@ -43,7 +43,7 @@ export function classifyPath(path) {
   if (!path || SKIP_DIRS.test(path)) return null;
   const base = path.split('/').pop();
   const dir = path.slice(0, path.length - base.length);
-  if (/^Jenkinsfile(\..+)?$/i.test(base) || /\.jenkinsfile$/i.test(base)) return 'jenkins';
+  if (/^Jenkinsfile([._-].+)?$/i.test(base) || /\.jenkinsfile$/i.test(base)) return 'jenkins';
   if (/^\.gitlab-ci\.ya?ml$/.test(base)) return 'gitlab';
   if (/^azure-pipelines[\w.-]*\.ya?ml$/i.test(base)) return 'azure';
   if (/^(\.azure-pipelines|\.azuredevops|\.azure)\//i.test(dir) && /\.ya?ml$/.test(base)) return 'azure';
